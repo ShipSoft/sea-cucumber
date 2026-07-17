@@ -52,7 +52,8 @@ int main() {
     setenv("SHIPGEOMETRY_ROOT", root.string().c_str(), 1);
 #endif
     const std::string resolved = ResolveGeometryDbPath(dbName);
-    check(resolved == (root / "share" / "geometry" / dbName).string(), "SHIPGEOMETRY_ROOT fallback");
+    check(resolved == (root / "share" / "geometry" / dbName).string(),
+          "SHIPGEOMETRY_ROOT fallback");
 
     fs::remove_all(root);
 

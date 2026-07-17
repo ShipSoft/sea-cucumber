@@ -86,7 +86,10 @@ struct GeoInfo {
     std::pair<double, double> zRange(Sub s, double lo, double hi) const {
         if (!has(s)) return {lo, hi};
         double a = 1e30, b = -1e30;
-        for (const auto& c : centres.at(s)) { a = std::min(a, c[2]); b = std::max(b, c[2]); }
+        for (const auto& c : centres.at(s)) {
+            a = std::min(a, c[2]);
+            b = std::max(b, c[2]);
+        }
         return {a, b};
     }
 };
@@ -134,11 +137,16 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
-        if (a == "--geometry") geometry = nxt();
-        else if (a == "--output") output = nxt();
-        else if (a == "--events") nEvents = std::atoi(nxt());
-        else if (a == "--seed") seed = std::atoi(nxt());
-        else if (a == "--down-min") downMinArg = std::atof(nxt());
+        if (a == "--geometry")
+            geometry = nxt();
+        else if (a == "--output")
+            output = nxt();
+        else if (a == "--events")
+            nEvents = std::atoi(nxt());
+        else if (a == "--seed")
+            seed = std::atoi(nxt());
+        else if (a == "--down-min")
+            downMinArg = std::atof(nxt());
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_demo_event [--geometry ship.db] [--output f.root] "
                          "[--events N] [--seed S] [--down-min mm]\n";
@@ -163,7 +171,7 @@ int main(int argc, char* argv[]) {
     double decayEnd = -1e30;
     if (geo.has(Sub::Decay))
         for (const auto& c : geo.centres.at(Sub::Decay)) decayEnd = std::max(decayEnd, c[2]);
-    const double downMin = (downMinArg > 0) ? downMinArg
+    const double downMin = (downMinArg > 0)     ? downMinArg
                            : (decayEnd > -1e29) ? decayEnd
                                                 : geomMax - 15000.0;
 
@@ -189,7 +197,10 @@ int main(int argc, char* argv[]) {
     auto writer = ROOT::RNTupleWriter::Recreate(std::move(model), "events", output);
 
     for (int ev = 0; ev < nEvents; ++ev) {
-        mcP->clear(); simH->clear(); simR->hits.clear(); simR->particles.clear();
+        mcP->clear();
+        simH->clear();
+        simR->hits.clear();
+        simR->particles.clear();
 
         // Truth decay vertex, upstream in the decay volume.
         const Vec3 vtx = {gaus(0, 120), gaus(0, 120),

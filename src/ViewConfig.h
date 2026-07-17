@@ -31,7 +31,7 @@ struct SubsystemStyle {
 
 struct GeometryConfig {
     std::string db_file = "ship_geometry.db";
-    std::vector<std::string> include;   // ECMAScript regex; empty => all
+    std::vector<std::string> include;  // ECMAScript regex; empty => all
     std::vector<std::string> exclude;
     int max_depth = -1;
     bool stop_at_match = true;
@@ -60,8 +60,8 @@ struct DecayMarker {
 
 // The downstream sub-detector window the right-hand viewers zoom onto (mm, z).
 struct Downstream {
-    bool auto_window = true;   // derive the window from the geometry (agnostic)
-    double zmin = 82000.0;     // used only when auto_window = false
+    bool auto_window = true;  // derive the window from the geometry (agnostic)
+    double zmin = 82000.0;    // used only when auto_window = false
     double zmax = 95000.0;
 };
 

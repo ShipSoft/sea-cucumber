@@ -35,11 +35,11 @@ ViewConfig DefaultViewConfig() {
     ViewConfig c;
     c.geometry.styles = {
         // Specific before broad; first match wins.
-        {"DecayVolume", kCream, 55}, {"Vessel", kCream, 55},   {"Decay", kCream, 60},
-        {"Straw", kBlue, 55},        {"Tracker", kBlue, 55},   {"Magnet", kBlue, 60},
+        {"DecayVolume", kCream, 55}, {"Vessel", kCream, 55},        {"Decay", kCream, 60},
+        {"Straw", kBlue, 55},        {"Tracker", kBlue, 55},        {"Magnet", kBlue, 60},
         {"Timing", kBlue, 50},       {"UpstreamTagger", kBlue, 60}, {"SBT", kBlue, 80},
-        {"ECAL", kNavy, 45},         {"HCAL", kNavy, 50},      {"Calorimeter", kNavy, 50},
-        {"MuonShield", kNavy, 60},   {"Muon", kNavy, 60},      {"Target", kPink, 40},
+        {"ECAL", kNavy, 45},         {"HCAL", kNavy, 50},           {"Calorimeter", kNavy, 50},
+        {"MuonShield", kNavy, 60},   {"Muon", kNavy, 60},           {"Target", kPink, 40},
         {"Neutrino", kNavy, 65},     {"Cavern", kNavy, 90},
     };
     c.geometry.default_color = kBlue;

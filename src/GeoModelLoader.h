@@ -59,10 +59,10 @@
 //  ECAL layer envelopes.  `max_shapes` is a hard safety cap.
 // =============================================================================
 
-#include <string>
-#include <vector>
 #include <cstddef>
 #include <functional>
+#include <string>
+#include <vector>
 
 class TGeoShape;
 class TGeoHMatrix;
@@ -111,19 +111,16 @@ struct GeoLoadOptions {
 // transform in the cm world frame.  `name` is the GeoModel logical-volume
 // name with a copy index suffix appended for uniqueness.  `depth` is the
 // tree depth (world = 0).
-using GeoEmit = std::function<void(const std::string& name,
-                                   TGeoShape*         shape,
-                                   const TGeoHMatrix& global,
-                                   int                depth)>;
+using GeoEmit = std::function<void(const std::string& name, TGeoShape* shape,
+                                   const TGeoHMatrix& global, int depth)>;
 
 // Walk an already-loaded GeoModel world, emitting matched shapes through
 // `emit`. This is the display-specific half (GeoModel tree -> TGeo/REve) and
 // is deliberately separate from *how* the world was obtained: pass a world
 // from SHiPGeometryService (the aegir way) or from the direct-open helper
 // below -- either works. Returns the number of shapes emitted.
-std::size_t WalkGeoModelWorld(const GeoVPhysVol*    world,
-                              const GeoLoadOptions& opt,
-                              const GeoEmit&        emit);
+std::size_t WalkGeoModelWorld(const GeoVPhysVol* world, const GeoLoadOptions& opt,
+                              const GeoEmit& emit);
 
 // Convenience: open `db_path` directly with GeoModelIO (GMDBManager +
 // ReadGeoModel), then WalkGeoModelWorld. This is the fallback path for when
@@ -132,9 +129,8 @@ std::size_t WalkGeoModelWorld(const GeoVPhysVol*    world,
 // Returns the number of shapes emitted.
 // Throws std::runtime_error if the .db cannot be opened or the GeoModel
 // tree cannot be rebuilt.
-std::size_t LoadGeoModelDB(const std::string&    db_path,
-                           const GeoLoadOptions& opt,
-                           const GeoEmit&        emit);
+std::size_t LoadGeoModelDB(const std::string& db_path, const GeoLoadOptions& opt,
+                           const GeoEmit& emit);
 
 }  // namespace shipdisp
 

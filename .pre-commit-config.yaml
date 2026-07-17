@@ -1,7 +1,7 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Hooks run via `prek` (see pixi.toml [feature.lint]); tool versions are pinned
-# in pixi, so hooks invoke the environment-provided tools as system commands --
-# the same arrangement as the other ShipSoft repos.
+# in pixi, so hooks invoke the environment-provided tools as system commands.
 repos:
   - repo: local
     hooks:
@@ -22,14 +22,14 @@ repos:
         files: (CMakeLists\.txt|\.cmake)$
       - id: cmakelint
         name: cmakelint
-        entry: cmakelint
+        entry: cmakelint --linelength=100
         language: system
         files: (CMakeLists\.txt|\.cmake)$
       - id: codespell
         name: codespell
-        entry: codespell
+        entry: codespell -L gaus,astroid
         language: system
-        pass_filenames: false
+        exclude: '(pixi\.lock|\.pixi/|build/)'
       - id: reuse
         name: reuse
         entry: reuse lint

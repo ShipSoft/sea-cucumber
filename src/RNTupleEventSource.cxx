@@ -15,7 +15,12 @@
 #include <ROOT/REntry.hxx>
 #include <ROOT/RNTupleReader.hxx>
 
+#include <TFile.h>
+#include <TKey.h>
+#include <TList.h>
+
 #include <iostream>
+#include <memory>
 
 #include "SHiP/SimResult.hpp"
 
@@ -38,8 +43,7 @@ std::shared_ptr<T> tryBind(const ROOT::REntry& entry, const char* name) {
     try {
         return entry.GetPtr<T>(name);
     } catch (const std::exception&) {
-        std::cout << "[RNTupleEventSource] field '" << name
-                  << "' not present -- skipping\n";
+        std::cout << "[RNTupleEventSource] field '" << name << "' not present -- skipping\n";
         return nullptr;
     }
 }
@@ -61,9 +65,7 @@ struct RNTupleEventSource::Impl {
     const std::vector<SHiP::SimParticle>* effParts = &kNoParticles;
 
     void refresh() {
-        effHits = (hits && !hits->empty())    ? hits.get()
-                  : (result)                  ? &result->hits
-                                              : &kNoHits;
+        effHits = (hits && !hits->empty()) ? hits.get() : (result) ? &result->hits : &kNoHits;
         effParts = (parts && !parts->empty()) ? parts.get()
                    : (result)                 ? &result->particles
                                               : &kNoParticles;
@@ -77,6 +79,17 @@ RNTupleEventSource::RNTupleEventSource(const std::string& path, const std::strin
     } catch (const std::exception& e) {
         std::cerr << "[RNTupleEventSource] cannot open RNTuple '" << ntupleName << "' in '" << path
                   << "': " << e.what() << "\n";
+        // List the file's objects so the user can pick the right --ntuple.
+        if (std::unique_ptr<TFile> f{TFile::Open(path.c_str())}; f && !f->IsZombie()) {
+            std::cerr << "[RNTupleEventSource] objects found in '" << path << "':\n";
+            if (auto* keys = f->GetListOfKeys())
+                for (auto* o : *keys) {
+                    auto* k = static_cast<TKey*>(o);
+                    std::cerr << "      " << k->GetName() << "  (" << k->GetClassName() << ")\n";
+                }
+            std::cerr
+                << "[RNTupleEventSource] re-run with --ntuple <name> for the RNTuple you want\n";
+        }
         return;
     }
     if (!p_->reader) {
@@ -91,8 +104,8 @@ RNTupleEventSource::RNTupleEventSource(const std::string& path, const std::strin
     p_->rec = tryBind<std::vector<SHiP::RecParticle>>(entry, "recParticles");
     p_->result = tryBind<SHiP::SimResult>(entry, "simResult");
 
-    std::cout << "[RNTupleEventSource] '" << path << "' ntuple '" << ntupleName << "': "
-              << p_->reader->GetNEntries() << " events\n";
+    std::cout << "[RNTupleEventSource] '" << path << "' ntuple '" << ntupleName
+              << "': " << p_->reader->GetNEntries() << " events\n";
 }
 
 RNTupleEventSource::~RNTupleEventSource() = default;
@@ -110,7 +123,9 @@ bool RNTupleEventSource::loadEvent(std::int64_t i) {
 }
 
 const std::vector<SHiP::SimHit>& RNTupleEventSource::hits() const { return *p_->effHits; }
-const std::vector<SHiP::SimParticle>& RNTupleEventSource::simParticles() const { return *p_->effParts; }
+const std::vector<SHiP::SimParticle>& RNTupleEventSource::simParticles() const {
+    return *p_->effParts;
+}
 const std::vector<SHiP::MCParticle>& RNTupleEventSource::mcParticles() const {
     return p_->mc ? *p_->mc : kNoMC;
 }

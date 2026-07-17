@@ -1,9 +1,0 @@
-# SPDX-License-Identifier: LGPL-3.0-or-later
-cff-version: 1.2.0
-title: sea_cucumber
-message: "The SHiP event display."
-type: software
-authors:
-  - name: "SHiP Collaboration"
-license: LGPL-3.0-or-later
-repository-code: "https://github.com/ShipSoft/sea_cucumber"

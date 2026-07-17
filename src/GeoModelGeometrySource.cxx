@@ -6,7 +6,7 @@
 
 #include "GeoModelGeometrySource.h"
 
-#include <cstdlib>       // std::getenv
+#include <cstdlib>  // std::getenv
 #include <filesystem>
 #include <iostream>
 #include <utility>

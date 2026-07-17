@@ -26,11 +26,11 @@
 #include <ROOT/REveTrans.hxx>
 #include <ROOT/REveViewer.hxx>
 
+#include <Rtypes.h>
 #include <TApplication.h>
 #include <TColor.h>
 #include <TGeoMatrix.h>
 #include <TGeoShape.h>
-#include <Rtypes.h>
 
 #include <algorithm>
 #include <array>
@@ -92,8 +92,7 @@ class EventDisplay {
             def->SetCameraType(REX::REveViewer::kCameraPerspXOZ);
             def->SetBlackBackground(true);
         }
-        auto makeDown = [&](const char* name, const char* title,
-                            REX::REveViewer::ECameraType cam) {
+        auto makeDown = [&](const char* name, const char* title, REX::REveViewer::ECameraType cam) {
             if (REX::REveViewer* v = eve_->SpawnNewViewer(name, title)) {
                 v->RemoveElements();  // drop auto-attached global/event scenes
                 v->AddScene(downGeoScene_);
@@ -236,8 +235,8 @@ class EventDisplay {
         std::array<REX::REvePointSet*, kBins> full{}, down{};
         for (int b = 0; b < kBins; ++b) {
             const float size =
-                view_.hits.marker_size * (1.0f + 1.8f * (view_.hits.color_by_energy ? b : 0) /
-                                                     std::max(1, kBins - 1));
+                view_.hits.marker_size *
+                (1.0f + 1.8f * (view_.hits.color_by_energy ? b : 0) / std::max(1, kBins - 1));
             auto mk = [&](const char* tag) {
                 auto* ps =
                     new REX::REvePointSet((std::string("hits_") + tag + std::to_string(b)).c_str());
@@ -317,19 +316,37 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* n) -> std::string {
-            if (i + 1 >= argc) { std::cerr << "missing value for " << n << "\n"; std::exit(2); }
+            if (i + 1 >= argc) {
+                std::cerr << "missing value for " << n << "\n";
+                std::exit(2);
+            }
             return argv[++i];
         };
-        if (a == "--geometry") geometry = next("--geometry");
-        else if (a == "--data") data = next("--data");
-        else if (a == "--view") viewFile = next("--view");
-        else if (a == "--ntuple") ntuple = next("--ntuple");
-        else if (a == "--event") event = std::atoll(next("--event").c_str());
-        else if (a == "--scale") scaleOverride = std::atof(next("--scale").c_str());
-        else if (a == "-h" || a == "--help") { usage(argv[0]); return 0; }
-        else { std::cerr << "unknown argument: " << a << "\n"; usage(argv[0]); return 2; }
+        if (a == "--geometry")
+            geometry = next("--geometry");
+        else if (a == "--data")
+            data = next("--data");
+        else if (a == "--view")
+            viewFile = next("--view");
+        else if (a == "--ntuple")
+            ntuple = next("--ntuple");
+        else if (a == "--event")
+            event = std::atoll(next("--event").c_str());
+        else if (a == "--scale")
+            scaleOverride = std::atof(next("--scale").c_str());
+        else if (a == "-h" || a == "--help") {
+            usage(argv[0]);
+            return 0;
+        } else {
+            std::cerr << "unknown argument: " << a << "\n";
+            usage(argv[0]);
+            return 2;
+        }
     }
-    if (geometry.empty() || data.empty()) { usage(argv[0]); return 2; }
+    if (geometry.empty() || data.empty()) {
+        usage(argv[0]);
+        return 2;
+    }
 
     shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
     if (scaleOverride > 0) view.hit_scale = scaleOverride;

@@ -1,6 +1,0 @@
-LGPL-3.0-or-later
-
-This is a placeholder for the full GNU Lesser General Public License v3.0 text.
-Before publishing, replace this file with the canonical licence text, e.g.:
-    reuse download LGPL-3.0-or-later
-(which fetches the SPDX-registered full text into LICENSES/).
