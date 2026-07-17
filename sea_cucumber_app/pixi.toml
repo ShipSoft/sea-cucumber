@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Copyright (C) CERN for the benefit of the SHiP Collaboration
+
+[workspace]
+name = "sea_cucumber"
+description = "REve event display for the SHiP experiment"
+# SHiP-specific packages (shipdatamodel, geomodel, ...) come from prefix.dev/ship,
+# exactly as aegir resolves them; everything else from conda-forge.
+channels = ["https://prefix.dev/ship", "conda-forge"]
+# linux-64 only, matching data-model / geometry / aegir (no osx-arm64 builds of
+# the SHiP packages exist on the channel).
+platforms = ["linux-64"]
+requires-pixi = ">=0.68"
+
+[tasks]
+# `pixi run build` configures then builds; `configure` runs automatically.
+configure = "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=$CONDA_PREFIX"
+build = { cmd = "cmake --build build -j", depends-on = ["configure"] }
+install = { cmd = "cmake --install build", depends-on = ["build"] }
+# `pixi run test` builds (incl. tests) then runs CTest.
+test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
+# Convenience: run the display (append --geometry ... --data ...).
+run = "sea_cucumber"
+clean = "rm -rf build"
+
+[dependencies]
+cxx-compiler = "*"
+cmake = ">=3.21"
+ninja = "*"
+git = "*"
+# ROOT 6.40+, pinned to the C++23 standard variant to match the EDM dictionary.
+root = ">=6.40"
+root_cxx_standard = "==23"
+# Official SHiP event data model (SHiP::SHiPDataModel).
+shipdatamodel = "*"
+# Required transitively by SHiPDataModel's SHiP::SHiPUnits target.
+mp-units = ">=2.5"
+# GeoModel: GeoModelCore (Kernel) + GeoModelIO (DBManager, Read).
+geomodel = ">=6.22"
+# View-config parser.
+tomlplusplus = "*"
+# Optional: the aegir way of loading a .db. Add the geometry_service package and
+# build with -DSHIP_USE_GEOMETRY_SERVICE=ON once its name is confirmed.
+# shipgeometry = "*"
+
+[activation.env]
+# Mirror aegir: make a DB under $CONDA_PREFIX/share/geometry discoverable.
+SHIPGEOMETRY_ROOT = "$CONDA_PREFIX"
+
+# --- lint: prek-driven, matching the other SHiP repos ------------------------
+[feature.lint.dependencies]
+prek = "*"
+python = ">=3.11"
+clang-format = "22.*"
+codespell = "*"
+cmakelint = "*"
+reuse = "*"
+cffconvert = "*"
+commitizen = "*"
+
+[feature.lint.pypi-dependencies]
+cpplint = "==2.0.2"
+gersemi = "==0.27.7"
+
+[feature.lint.tasks]
+# `pixi run lint` (pixi auto-selects the lint environment for this task).
+lint = "prek run --all-files"
+install-hooks = "prek install --hook-type pre-commit --hook-type commit-msg"
+
+[environments]
+lint = { features = ["lint"], solve-group = "lint" }

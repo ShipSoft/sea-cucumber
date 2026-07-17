@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Default view configuration for sea_cucumber.
+# Every key is optional; omitted keys fall back to the built-in defaults.
+
+# The single mm -> scene-unit scale shared by geometry and hits.
+hit_scale = 0.01
+
+# RNTuple name written by aegir's sim_output_module.
+ntuple = "events"
+
+[geometry]
+db_file = "ship_geometry.db"        # bare name resolved CWD -> $SHIPGEOMETRY_ROOT/share/geometry
+include = ['.*']                    # ECMAScript regex; empty or '.*' => all volumes
+exclude = ['Straw', 'Tile']         # drop the densest replicated subsystems for speed
+max_depth = -1                      # -1 = unlimited
+stop_at_match = true                # emit a matched volume as an envelope, don't descend
+default_transparency = 70
+
+# Colours are ROOT colour indices (e.g. kAzure=860, kPink=900, kOrange=800,
+# kCyan=432, kSpring=820, kViolet=880, kRed=632, kGreen=416, kGray+1=921).
+# First matching rule (substring of the volume name) wins.
+[[geometry.style]]
+match = "Straw"
+color = 860
+transparency = 55
+
+[[geometry.style]]
+match = "ECAL"
+color = 900
+transparency = 45
+
+[[geometry.style]]
+match = "HCAL"
+color = 800
+transparency = 50
+
+[[geometry.style]]
+match = "SBT"
+color = 432
+transparency = 75
+
+[[geometry.style]]
+match = "Magnet"
+color = 820
+transparency = 65
+
+[[geometry.style]]
+match = "MuonShield"
+color = 880
+transparency = 60
+
+[[geometry.style]]
+match = "Target"
+color = 632
+transparency = 40
+
+[hits]
+marker_style = 20
+marker_size = 2.0
+color_by_energy = true              # false => colour categorically by detectorId
+
+[particles]
+draw_mc = true                      # MCParticle: momentum-direction stub from vertex
+draw_sim = true                     # SimParticle: vertex -> endpoint
+draw_rec = true                     # RecParticle: momentum-direction stub from vertex
+direction_length_mm = 500.0

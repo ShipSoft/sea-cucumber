@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Default view configuration for sea_cucumber (SHiP outreach palette).
+#   #081B3C dark navy   #20428A blue   #C64284 pink   #F1DEBC cream
+
+hit_scale = 0.01
+ntuple = "events"
+
+# The right-hand viewers zoom onto the detector past the decay volume.
+# auto = true derives the window from the geometry (recommended, agnostic);
+# set auto = false to force the explicit zmin/zmax below.
+[downstream]
+auto = true
+zmin = 82000.0
+zmax = 95000.0
+
+[geometry]
+db_file = "ship_geometry.db"
+include = ['.*']
+exclude = ['Straw', 'Tile']   # drop the densest replicated subsystems for speed
+max_depth = -1
+stop_at_match = true
+default_color = "#20428A"
+default_transparency = 70
+
+# First matching rule (substring of the volume name) wins.
+[[geometry.style]]
+match = "DecayVolume"
+color = "#F1DEBC"      # cream vessel
+transparency = 55
+[[geometry.style]]
+match = "Vessel"
+color = "#F1DEBC"
+transparency = 55
+[[geometry.style]]
+match = "Tracker"
+color = "#20428A"
+transparency = 55
+[[geometry.style]]
+match = "Magnet"
+color = "#20428A"
+transparency = 60
+[[geometry.style]]
+match = "Timing"
+color = "#20428A"
+transparency = 50
+[[geometry.style]]
+match = "SBT"
+color = "#20428A"
+transparency = 80
+[[geometry.style]]
+match = "ECAL"
+color = "#081B3C"
+transparency = 45
+[[geometry.style]]
+match = "HCAL"
+color = "#081B3C"
+transparency = 50
+[[geometry.style]]
+match = "MuonShield"
+color = "#081B3C"
+transparency = 60
+[[geometry.style]]
+match = "Target"
+color = "#C64284"
+transparency = 40
+
+[hits]
+marker_style = 20
+marker_size = 2.5
+color_by_energy = true    # ramp cream (low) -> pink (high)
+color_low = "#F1DEBC"
+color_high = "#C64284"
+
+[decay]
+draw = true               # truth decay-vertex marker
+color = "#F1DEBC"
+marker_style = 29         # filled star
+marker_size = 3.0

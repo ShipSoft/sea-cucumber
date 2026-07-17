@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Hooks run via `prek` (see pixi.toml [feature.lint]); tool versions are pinned
+# in pixi, so hooks invoke the environment-provided tools as system commands --
+# the same arrangement as the other ShipSoft repos.
+repos:
+  - repo: local
+    hooks:
+      - id: clang-format
+        name: clang-format
+        entry: clang-format -i
+        language: system
+        types_or: [c++, c]
+      - id: cpplint
+        name: cpplint
+        entry: cpplint
+        language: system
+        types_or: [c++]
+      - id: gersemi
+        name: gersemi
+        entry: gersemi -i
+        language: system
+        files: (CMakeLists\.txt|\.cmake)$
+      - id: cmakelint
+        name: cmakelint
+        entry: cmakelint
+        language: system
+        files: (CMakeLists\.txt|\.cmake)$
+      - id: codespell
+        name: codespell
+        entry: codespell
+        language: system
+        pass_filenames: false
+      - id: reuse
+        name: reuse
+        entry: reuse lint
+        language: system
+        pass_filenames: false
