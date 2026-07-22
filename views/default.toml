@@ -6,19 +6,49 @@
 hit_scale = 0.01
 ntuple = "events"
 
-# The right-hand viewers zoom onto the detector past the decay volume.
-# auto = true derives the window from the geometry (recommended, agnostic);
-# set auto = false to force the explicit zmin/zmax below.
-[downstream]
-auto = false 
-zmin = 82000.0
-zmax = 95000.0
+scan_depth = 4
+region_depth = 5
+
+region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
+
+[[region]]
+name = "Downstream"
+title = "Downstream detectors"
+zmin = 80000.0
+zmax = 100000.0
+camera = "3d"
+max_shapes = 2000
+max_transparency = 50
+
+[[region]]
+name = "SBT"
+camera = "3d"          # looking along z
+xmin = -6000.0
+xmax = 6000.0
+zmin = 32000.0         # optional: also pick the calorimeter along the beam
+zmax = 82000.0
+max_shapes = 2000
+hit_marker_size = 1.5 
+decay_marker_size = 5.0
+max_transparency = 50
+
+
+[[region]]
+exclude = ["*muon_shield*"]
+name = "SND and UBT"
+camera = "3d"          # looking along z
+xmin = -4000.0
+xmax = 4000.0
+zmin = 27000.0         # optional: also pick the calorimeter along the beam
+zmax = 33000.0
+max_shapes = 2000
+max_transparency = 50
 
 [geometry]
 db_file = "ship_geometry.db"
 include = ['.*']
 exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*', '.*neutrino_detector.*']
-max_depth = 4
+max_depth = 3
 stop_at_match = true
 default_color = "#20428A"
 default_transparency = 70

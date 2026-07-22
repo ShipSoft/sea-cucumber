@@ -61,6 +61,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -98,6 +99,20 @@ struct GeoLoadOptions {
     // prints, so it's obvious what to put in the regex.
     bool verbose = true;
 
+    // Optional z gate (millimetres, GeoModel world frame). When enabled, only
+    // volumes whose origin lies inside [z_window_min, z_window_max] are
+    // CONVERTED and emitted; the walk still descends through volumes outside
+    // it, because a parent envelope may sit at z~0 while its children are far
+    // downstream. On a ~1M-volume geometry this is the difference between
+    // building a million TGeoShapes and building a few thousand.
+    // Match volume names case-insensitively (geometries are inconsistent about
+    // capitalisation, e.g. "neutrino_detector" vs "NeutrinoDetector").
+    bool icase = false;
+
+    bool use_z_window = false;
+    double z_window_min = 0.0;
+    double z_window_max = 0.0;
+
     // Length scale applied to every emitted dimension and translation, in
     // mm/scene-unit. The display sets this to its single mm->scene factor
     // (e.g. 0.01) so geometry shares one uniform scale with the hits and no
@@ -121,6 +136,37 @@ using GeoEmit = std::function<void(const std::string& name, TGeoShape* shape,
 // below -- either works. Returns the number of shapes emitted.
 std::size_t WalkGeoModelWorld(const GeoVPhysVol* world, const GeoLoadOptions& opt,
                               const GeoEmit& emit);
+
+// Compile a volume-name pattern.
+//
+// Patterns are ECMAScript regexes, matched as substrings (so "ms" already means
+// "contains ms"). If a pattern is NOT a valid regex -- the common case being
+// glob syntax like "*ms*", where a leading '*' is a regex error -- it is
+// translated from glob (* -> .*, ? -> .) and compiled again. That way both
+// styles work and neither surprises the user.
+std::regex CompileNamePattern(const std::string& pattern, bool icase = true);
+
+// Cheap reconnaissance pass: reports (name, world z in mm, depth) for every
+// volume WITHOUT converting any shape. Shape conversion dominates the cost of a
+// walk, so this is orders of magnitude faster than LoadGeoModelDB and is the
+// right way to answer "where in z is the subsystem called X?" before deciding
+// what to actually build. Honours include/exclude and max_depth; ignores
+// max_shapes and the z window. Honours stop_at_match: when true the scan does
+// NOT descend into a volume it has already reported, which is what you want
+// when locating a subsystem envelope (its interior can hold ~100k volumes).
+// `dz_mm` is the world-frame z half-extent, or -1 when it can't be measured.
+using GeoScan =
+    std::function<void(const std::string& name, double z_mm, double dz_mm, int depth)>;
+
+std::size_t ScanGeoModelDB(const std::string& db_path, const GeoLoadOptions& opt,
+                           const GeoScan& scan);
+
+// Open `db_path` once and cache the resulting GeoModel world for the lifetime
+// of the process. Reading a large .db (~1M physical volumes) takes seconds, so
+// callers that walk the same geometry more than once (e.g. a whole-detector
+// pass plus a per-region pass) should go through this rather than reopening.
+// Returns nullptr on failure. The returned world stays valid until exit.
+const GeoVPhysVol* GetCachedGeoModelWorld(const std::string& db_path);
 
 // Convenience: open `db_path` directly with GeoModelIO (GMDBManager +
 // ReadGeoModel), then WalkGeoModelWorld. This is the fallback path for when

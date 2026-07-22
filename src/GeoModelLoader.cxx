@@ -62,6 +62,9 @@
 
 #include <atomic>
 #include <cmath>
+#include <algorithm>
+#include <any>
+#include <map>
 #include <iostream>
 #include <memory>
 #include <regex>
@@ -115,6 +118,118 @@ void warnUnsupported(const GeoShape* s) {
     std::cerr << "[GeoModelLoader] unsupported GeoModel shape '"
               << (s ? s->type() : std::string("<null>"))
               << "' -- skipped (add a case in convertShape())\n";
+}
+
+
+// -----------------------------------------------------------------------------
+//  Cheap half-extents of a GeoModel shape, WITHOUT converting it to a
+//  TGeoShape. Shape conversion is the dominant cost of a walk, so being able to
+//  bound a volume (and therefore its whole subtree) from the GeoModel shape
+//  alone is what makes subtree pruning worthwhile.
+//
+//  Returns false for shapes we can't measure; callers then decline to prune,
+//  which is always the safe direction.
+// -----------------------------------------------------------------------------
+bool halfExtents(const GeoShape* s, double& dx, double& dy, double& dz) {
+    if (!s) return false;
+    if (const auto* b = dynamic_cast<const GeoBox*>(s)) {
+        dx = b->getXHalfLength(); dy = b->getYHalfLength(); dz = b->getZHalfLength();
+        return true;
+    }
+    if (const auto* t = dynamic_cast<const GeoTube*>(s)) {
+        dx = dy = t->getRMax(); dz = t->getZHalfLength();
+        return true;
+    }
+    if (const auto* t = dynamic_cast<const GeoTubs*>(s)) {
+        dx = dy = t->getRMax(); dz = t->getZHalfLength();
+        return true;
+    }
+    if (const auto* c = dynamic_cast<const GeoCons*>(s)) {
+        dx = dy = std::max(c->getRMax1(), c->getRMax2()); dz = c->getDZ();
+        return true;
+    }
+    if (const auto* t = dynamic_cast<const GeoTrd*>(s)) {
+        dx = std::max(t->getXHalfLength1(), t->getXHalfLength2());
+        dy = std::max(t->getYHalfLength1(), t->getYHalfLength2());
+        dz = t->getZHalfLength();
+        return true;
+    }
+    if (const auto* t = dynamic_cast<const GeoTrap*>(s)) {
+        dx = std::max({t->getDxdyndzn(), t->getDxdypdzn(), t->getDxdyndzp(), t->getDxdypdzp()});
+        dy = std::max(t->getDydzn(), t->getDydzp());
+        dz = t->getZHalfLength();
+        return true;
+    }
+    if (const auto* p = dynamic_cast<const GeoPara*>(s)) {
+        dx = p->getXHalfLength(); dy = p->getYHalfLength(); dz = p->getZHalfLength();
+        return true;
+    }
+    if (const auto* e = dynamic_cast<const GeoEllipticalTube*>(s)) {
+        dx = e->getXHalfLength(); dy = e->getYHalfLength(); dz = e->getZHalfLength();
+        return true;
+    }
+    if (const auto* p = dynamic_cast<const GeoPcon*>(s)) {
+        double r = 0, zlo = 1e30, zhi = -1e30;
+        for (unsigned i = 0; i < p->getNPlanes(); ++i) {
+            r = std::max(r, p->getRMaxPlane(i));
+            zlo = std::min(zlo, p->getZPlane(i));
+            zhi = std::max(zhi, p->getZPlane(i));
+        }
+        if (zhi < zlo) return false;
+        dx = dy = r; dz = 0.5 * (zhi - zlo);
+        return true;
+    }
+    if (const auto* p = dynamic_cast<const GeoPgon*>(s)) {
+        double r = 0, zlo = 1e30, zhi = -1e30;
+        for (unsigned i = 0; i < p->getNPlanes(); ++i) {
+            r = std::max(r, p->getRMaxPlane(i));
+            zlo = std::min(zlo, p->getZPlane(i));
+            zhi = std::max(zhi, p->getZPlane(i));
+        }
+        if (zhi < zlo) return false;
+        dx = dy = r; dz = 0.5 * (zhi - zlo);
+        return true;
+    }
+    if (const auto* t = dynamic_cast<const GeoTorus*>(s)) {
+        dx = dy = t->getRTor() + t->getRMax(); dz = t->getRMax();
+        return true;
+    }
+    // Booleans: bound by the operands (over-estimate is fine, never prunes
+    // something that should have been kept).
+    if (const auto* sh = dynamic_cast<const GeoShapeShift*>(s)) {
+        if (!halfExtents(sh->getOp(), dx, dy, dz)) return false;
+        const auto t = sh->getX().translation();
+        dx += std::abs(t.x()); dy += std::abs(t.y()); dz += std::abs(t.z());
+        return true;
+    }
+    if (const auto* u = dynamic_cast<const GeoShapeUnion*>(s)) {
+        double ax, ay, az, bx, by, bz;
+        if (!halfExtents(u->getOpA(), ax, ay, az)) return false;
+        if (!halfExtents(u->getOpB(), bx, by, bz)) return false;
+        dx = std::max(ax, bx); dy = std::max(ay, by); dz = std::max(az, bz);
+        return true;
+    }
+    if (const auto* d = dynamic_cast<const GeoShapeSubtraction*>(s)) {
+        return halfExtents(d->getOpA(), dx, dy, dz);  // bounded by the minuend
+    }
+    if (const auto* i = dynamic_cast<const GeoShapeIntersection*>(s)) {
+        double ax, ay, az, bx, by, bz;
+        if (!halfExtents(i->getOpA(), ax, ay, az)) return false;
+        if (!halfExtents(i->getOpB(), bx, by, bz)) return false;
+        dx = std::min(ax, bx); dy = std::min(ay, by); dz = std::min(az, bz);
+        return true;
+    }
+    return false;
+}
+
+// World-frame z half-extent of a volume: the exact axis-aligned bound for a box
+// under rotation R, and a safe over-estimate for anything bounded by that box.
+// Returns -1 when the shape can't be measured (caller must not prune).
+double zHalfExtentWorld(const GeoShape* s, const GeoTrf::Transform3D& toWorld) {
+    double dx = 0, dy = 0, dz = 0;
+    if (!halfExtents(s, dx, dy, dz)) return -1.0;
+    const auto R = toWorld.linear();
+    return std::abs(R(2, 0)) * dx + std::abs(R(2, 1)) * dy + std::abs(R(2, 2)) * dz;
 }
 
 // Forward decl for recursion.
@@ -256,6 +371,7 @@ struct WalkState {
     const GeoEmit& emit;
     std::size_t emitted = 0;
     std::size_t visited = 0;
+    std::size_t pruned = 0;
     bool capped = false;
 };
 
@@ -290,12 +406,35 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
         const std::string name = lv ? lv->getName() : std::string("<noLV>");
         ++st.visited;
 
+        // Cheap z gate FIRST: converting a GeoShape into a TGeoShape is by far
+        // the most expensive thing here, so on a ~1M-volume geometry we must
+        // decide before doing it.
+        bool inZ = true;
+        if (st.opt.use_z_window) {
+            const double zc = childToWorld.translation().z();
+            // Bound the volume from the GeoModel shape alone. Children are
+            // contained in their parent, so a volume whose extent misses the
+            // window cannot have any descendant inside it -- prune the entire
+            // subtree. This is what stops us walking the whole muon shield to
+            // reach the spectrometer. If the shape can't be measured we do not
+            // prune (safe direction).
+            const double dz =
+                lv ? zHalfExtentWorld(lv->getShape(), childToWorld) : -1.0;
+            if (dz >= 0.0) {
+                if (zc + dz < st.opt.z_window_min || zc - dz > st.opt.z_window_max) {
+                    ++st.pruned;
+                    continue;  // skip this volume AND its whole subtree
+                }
+            }
+            inZ = (zc >= st.opt.z_window_min && zc <= st.opt.z_window_max);
+        }
+
         const bool incl = st.include.empty() || matchesAny(name, st.include);
         const bool excl = !st.exclude.empty() && matchesAny(name, st.exclude);
 
         if (excl) continue;  // prune: neither emit nor descend into the subtree
 
-        const bool matched = incl;
+        const bool matched = incl && inZ;
 
         if (matched) {
             TGeoHMatrix shift;
@@ -314,10 +453,13 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
     }
 }
 
-std::vector<std::regex> compile(const std::vector<std::string>& pats) {
+std::vector<std::regex> compile(const std::vector<std::string>& pats, bool icase = false) {
     std::vector<std::regex> out;
     out.reserve(pats.size());
-    for (const auto& s : pats) out.emplace_back(s, std::regex::ECMAScript);
+    const auto flags =
+        icase ? (std::regex::ECMAScript | std::regex::icase) : std::regex::ECMAScript;
+    (void)flags;
+    for (const auto& s : pats) out.emplace_back(CompileNamePattern(s, icase));
     return out;
 }
 
@@ -347,37 +489,135 @@ std::size_t WalkGeoModelWorld(const GeoVPhysVol* world, const GeoLoadOptions& op
                      "your regex against the gmex volume names)\n";
     } else if (opt.verbose) {
         std::cout << "[GeoModelLoader] emitted " << st.emitted << " shapes (" << st.visited
-                  << " volumes visited)\n";
+                  << " volumes visited, " << st.pruned << " subtrees pruned by z)\n";
     }
     return st.emitted;
 }
 
+namespace {
+
+// Keeps a parsed GeoModel world alive for the process lifetime. The GMDBManager
+// and ReadGeoModel must outlive the tree, and the world handle is stored in a
+// std::any so this works whether buildGeoModel() returns a raw pointer or an
+// intrusive smart pointer (the type differs across GeoModel 6.x releases).
+struct WorldHolder {
+    std::shared_ptr<GMDBManager> db;
+    std::unique_ptr<GeoModelIO::ReadGeoModel> reader;
+    std::any worldLink;
+    const GeoVPhysVol* world = nullptr;
+};
+
+std::map<std::string, WorldHolder>& worldCache() {
+    static std::map<std::string, WorldHolder> cache;
+    return cache;
+}
+
+}  // namespace
+
+namespace {
+
+// Name/position-only traversal: no GeoShape -> TGeoShape conversion at all.
+void scanWalk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int depth,
+              const GeoLoadOptions& opt, const std::vector<std::regex>& include,
+              const std::vector<std::regex>& exclude, const GeoScan& scan, std::size_t& visited) {
+    if (!vol) return;
+    if (opt.max_depth >= 0 && depth > opt.max_depth) return;
+
+    const unsigned nChild = vol->getNChildVols();
+    for (unsigned i = 0; i < nChild; ++i) {
+        const GeoVPhysVol* child = &(*vol->getChildVol(i));
+        const GeoTrf::Transform3D childToWorld = parentToWorld * vol->getXToChildVol(i);
+        const GeoLogVol* lv = child->getLogVol();
+        const std::string name = lv ? lv->getName() : std::string("<noLV>");
+        ++visited;
+
+        if (!exclude.empty() && matchesAny(name, exclude)) continue;  // prune subtree
+        const bool matched = include.empty() || matchesAny(name, include);
+        if (matched) {
+            const GeoLogVol* clv = child->getLogVol();
+            const double dz = clv ? zHalfExtentWorld(clv->getShape(), childToWorld) : -1.0;
+            scan(name, childToWorld.translation().z(), dz, depth);
+            // Locating a subsystem envelope does not require walking its
+            // interior, which may hold ~100k volumes.
+            if (opt.stop_at_match) continue;
+        }
+        scanWalk(child, childToWorld, depth + 1, opt, include, exclude, scan, visited);
+    }
+}
+
+}  // namespace
+
+
+std::regex CompileNamePattern(const std::string& pattern, bool icase) {
+    const auto flags =
+        icase ? (std::regex::ECMAScript | std::regex::icase) : std::regex::ECMAScript;
+    try {
+        return std::regex(pattern, flags);
+    } catch (const std::regex_error&) {
+        // Not a regex -- treat it as a glob ("*ms*" -> ".*ms.*").
+        std::string re;
+        re.reserve(pattern.size() * 2);
+        for (const char ch : pattern) {
+            switch (ch) {
+                case '*': re += ".*"; break;
+                case '?': re += '.'; break;
+                case '.': case '+': case '(': case ')': case '[': case ']':
+                case '{': case '}': case '^': case '$': case '|': case '\\':
+                    re += '\\';
+                    re += ch;
+                    break;
+                default: re += ch;
+            }
+        }
+        try {
+            return std::regex(re, flags);
+        } catch (const std::regex_error& e) {
+            std::cerr << "[GeoModelLoader] unusable name pattern '" << pattern << "' (" << e.what()
+                      << ") -- it will match nothing\n";
+            return std::regex("(?!)");  // never matches
+        }
+    }
+}
+
+std::size_t ScanGeoModelDB(const std::string& db_path, const GeoLoadOptions& opt,
+                           const GeoScan& scan) {
+    const GeoVPhysVol* world = GetCachedGeoModelWorld(db_path);
+    if (!world) {
+        throw std::runtime_error("GeoModelLoader: cannot open/build .db '" + db_path + "'");
+    }
+    const auto incl = compile(opt.include, opt.icase);
+    const auto excl = compile(opt.exclude, opt.icase);
+    std::size_t visited = 0;
+    scanWalk(world, GeoTrf::Transform3D::Identity(), 0, opt, incl, excl, scan, visited);
+    return visited;
+}
+
+const GeoVPhysVol* GetCachedGeoModelWorld(const std::string& db_path) {
+    auto& cache = worldCache();
+    if (auto it = cache.find(db_path); it != cache.end()) return it->second.world;
+
+    WorldHolder h;
+    h.db = std::make_shared<GMDBManager>(db_path);
+    if (!h.db->checkIsDBOpen()) return nullptr;
+
+    h.reader = std::make_unique<GeoModelIO::ReadGeoModel>(h.db);
+    auto link = h.reader->buildGeoModel();
+    if (!link) return nullptr;
+    h.world = &(*link);
+    h.worldLink = std::move(link);  // keep the handle (and refcount) alive
+
+    const GeoVPhysVol* w = h.world;
+    cache.emplace(db_path, std::move(h));
+    return w;
+}
+
 std::size_t LoadGeoModelDB(const std::string& db_path, const GeoLoadOptions& opt,
                            const GeoEmit& emit) {
-    // --- open the SQLite geometry file ---------------------------------------
-    auto db = std::make_shared<GMDBManager>(db_path);
-    if (!db->checkIsDBOpen())
-        throw std::runtime_error("GeoModelLoader: cannot open .db '" + db_path + "'");
-
-    // --- rebuild the GeoModel tree -------------------------------------------
-    GeoModelIO::ReadGeoModel reader(db);  // shared_ptr ctor (6.x-preferred)
-    // API: buildGeoModel() returns the world physical volume.  Depending on
-    // the GeoModel version this is either a raw `GeoVPhysVol*` or a
-    // `PVConstLink` (a GeoIntrusivePtr).  `auto` + a null test via `if (!w)`
-    // works for both (GeoIntrusivePtr has an explicit-bool conversion), so
-    // we never dereference before checking.
-    auto worldLink = [&]() {
-        try {
-            return reader.buildGeoModel();
-        } catch (const std::exception& e) {
-            throw std::runtime_error(std::string("GeoModelLoader: buildGeoModel failed: ") +
-                                     e.what());
-        }
-    }();
-    if (!worldLink)
-        throw std::runtime_error("GeoModelLoader: null world volume from '" + db_path + "'");
-
-    return WalkGeoModelWorld(&(*worldLink), opt, emit);
+    const GeoVPhysVol* world = GetCachedGeoModelWorld(db_path);
+    if (!world) {
+        throw std::runtime_error("GeoModelLoader: cannot open/build .db '" + db_path + "'");
+    }
+    return WalkGeoModelWorld(world, opt, emit);
 }
 
 }  // namespace shipdisp
