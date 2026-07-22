@@ -292,7 +292,10 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
 
         const bool incl = st.include.empty() || matchesAny(name, st.include);
         const bool excl = !st.exclude.empty() && matchesAny(name, st.exclude);
-        const bool matched = incl && !excl;
+
+        if (excl) continue;  // prune: neither emit nor descend into the subtree
+
+        const bool matched = incl;
 
         if (matched) {
             TGeoHMatrix shift;
@@ -302,6 +305,7 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
                 global.Multiply(&shift);  // fold any top-level Shift in
                 st.emit(name + "#" + std::to_string(i), shape, global, depth);
                 ++st.emitted;
+
             }
             if (st.opt.stop_at_match) continue;  // envelope: don't descend
         }

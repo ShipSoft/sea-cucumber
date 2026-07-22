@@ -10,15 +10,15 @@ ntuple = "events"
 # auto = true derives the window from the geometry (recommended, agnostic);
 # set auto = false to force the explicit zmin/zmax below.
 [downstream]
-auto = true
+auto = false 
 zmin = 82000.0
 zmax = 95000.0
 
 [geometry]
 db_file = "ship_geometry.db"
 include = ['.*']
-exclude = ['Straw', 'Tile']   # drop the densest replicated subsystems for speed
-max_depth = -1
+exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*', '.*neutrino_detector.*']
+max_depth = 4
 stop_at_match = true
 default_color = "#20428A"
 default_transparency = 70

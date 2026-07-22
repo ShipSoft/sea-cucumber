@@ -98,11 +98,11 @@ RNTupleEventSource::RNTupleEventSource(const std::string& path, const std::strin
     }
 
     const auto& entry = p_->reader->GetModel().GetDefaultEntry();
-    p_->mc = tryBind<std::vector<SHiP::MCParticle>>(entry, "mcParticles");
-    p_->hits = tryBind<std::vector<SHiP::SimHit>>(entry, "simHits");
-    p_->parts = tryBind<std::vector<SHiP::SimParticle>>(entry, "simParticles");
-    p_->rec = tryBind<std::vector<SHiP::RecParticle>>(entry, "recParticles");
-    p_->result = tryBind<SHiP::SimResult>(entry, "simResult");
+    p_->mc = tryBind<std::vector<SHiP::MCParticle>>(entry, "mc_particles");
+    p_->hits = tryBind<std::vector<SHiP::SimHit>>(entry, "sim_hits");
+    p_->parts = tryBind<std::vector<SHiP::SimParticle>>(entry, "sim_particles");
+    p_->rec = tryBind<std::vector<SHiP::RecParticle>>(entry, "rec_particles");
+    p_->result = tryBind<SHiP::SimResult>(entry, "sim_result");
 
     std::cout << "[RNTupleEventSource] '" << path << "' ntuple '" << ntupleName
               << "': " << p_->reader->GetNEntries() << " events\n";
