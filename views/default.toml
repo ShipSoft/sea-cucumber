@@ -22,24 +22,24 @@ max_transparency = 50
 
 [[region]]
 name = "SBT"
-camera = "3d"          # looking along z
+camera = "3d"          
 xmin = -6000.0
 xmax = 6000.0
-zmin = 32000.0         # optional: also pick the calorimeter along the beam
+zmin = 32000.0         
 zmax = 82000.0
 max_shapes = 2000
 hit_marker_size = 1.5 
-decay_marker_size = 5.0
+decay_marker_size = 15.0
 max_transparency = 50
 
 
 [[region]]
 exclude = ["*muon_shield*"]
 name = "SND and UBT"
-camera = "3d"          # looking along z
+camera = "3d"          
 xmin = -4000.0
 xmax = 4000.0
-zmin = 27000.0         # optional: also pick the calorimeter along the beam
+zmin = 27000.0        
 zmax = 33000.0
 max_shapes = 2000
 max_transparency = 50
@@ -98,7 +98,7 @@ transparency = 40
 [hits]
 marker_style = 20
 marker_size = 2.5
-color_by_energy = true    # ramp cream (low) -> pink (high)
+color_by_energy = true    
 color_low = "#F1DEBC"
 color_high = "#C64284"
 

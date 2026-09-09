@@ -20,7 +20,10 @@ install = { cmd = "cmake --install build", depends-on = ["build"] }
 # `pixi run test` builds (incl. tests) then runs CTest.
 test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
 # Convenience: run the display (append --geometry ... --data ...).
-run = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
+sea_cucumber = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
+sc = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
+event_display = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
+ED = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
 # Generate a demo event and display it, same geometry for both. Pass --geometry:
 #   pixi run demo --geometry /path/to/ship_geometry.db
 demo = { cmd = "bash tools/run_demo.sh", depends-on = ["build"] }

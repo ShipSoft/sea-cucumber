@@ -51,6 +51,7 @@
 #include <utility>
 #include <vector>
 
+#include "EventNavigator.h"
 #include "GeoModelGeometrySource.h"
 #include "IEventSource.h"
 #include "IGeometrySource.h"
@@ -142,6 +143,7 @@ class EventDisplay {
 
     void setupViewers() {
         if (auto* def = eve_->GetDefaultViewer()) {
+            def->SetName("Sea cucumber main panel");
             def->SetCameraType(REX::REveViewer::kCameraPerspXOZ);
             def->SetBlackBackground(true);
         }
@@ -455,6 +457,7 @@ class EventDisplay {
     std::int64_t numEvents() const { return source_ ? source_->numEvents() : 0; }
 
     void gotoEvent(std::int64_t i) {
+        current_ = i;
         if (!source_ || !source_->loadEvent(i)) {
             std::cerr << "[sea_cucumber] no event " << i << "\n";
             return;
@@ -463,6 +466,30 @@ class EventDisplay {
         for (auto& r : regions_) r.eventHolder->DestroyElements();
         drawHits(source_->hits());
         if (view_.decay.draw) drawDecayVertex(source_->mcParticles());
+    }
+
+    /// Publish logo/ over the display's web server, so the browser can fetch
+    /// e.g. /sea_cucumber_logo/sc.png. Harmless if the directory is absent.
+    void serveLogo(const std::string& dir) {
+        if (dir.empty()) return;
+        try {
+            eve_->AddLocation("sea_cucumber_logo/", dir);
+            std::cout << "[sea_cucumber] serving logo from '" << dir
+                      << "' at /sea_cucumber_logo/\n";
+        } catch (const std::exception& e) {
+            std::cerr << "[sea_cucumber] could not serve logo dir '" << dir << "': " << e.what()
+                      << "\n";
+        }
+    }
+
+    /// Add the in-GUI event navigator to the Eve world, so it appears in the
+    /// browser tree and its *MENU* methods are reachable by right-click.
+    void addNavigator() {
+        auto* nav = new EventNavigator("EventNavigator");
+        eve_->GetWorld()->AddElement(nav);
+        nav->Configure([this](long long i) { this->gotoEvent(i); }, numEvents(), current_);
+        std::cout << "[sea_cucumber] event navigator ready -- right-click "
+                     "'EventNavigator' in the browser tree for Next / Previous / GotoEvent\n";
     }
 
     void show() {
@@ -626,6 +653,7 @@ class EventDisplay {
     REX::REveElement* eventHolder_ = nullptr;
     std::vector<Region> regions_;
     IEventSource* source_ = nullptr;
+    std::int64_t current_ = 0;
 };
 
 }  // namespace shipdisp
@@ -634,7 +662,7 @@ namespace {
 void usage(const char* a0) {
     std::cerr << "Usage: " << a0
               << " --geometry <ship.db> --data <events.root> [--view <view.toml>]\n"
-                 "               [--ntuple <name>] [--event <i>] [--scale <f>]\n"
+                 "               [--ntuple <name>] [--event <i>] [--scale <f>] [--logo <dir>]\n"
                  "               [--inspect [depth]] [--inspect-match <pat>] [--inspect-all]\n"
                  "                     list the geometry's volumes (name, count, z span) and "
                  "exit;\n"
@@ -648,6 +676,7 @@ int main(int argc, char* argv[]) {
     double scaleOverride = -1.0;
     int inspectDepth = -1;  // >=0 => print a geometry inventory and exit
     std::string inspectMatch;  // optional name filter for --inspect
+    std::string logoDir = "logo";  // served at /sea_cucumber_logo/
     bool inspectAll = false;   // list every instance instead of aggregating
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -670,6 +699,8 @@ int main(int argc, char* argv[]) {
             event = std::atoll(next("--event").c_str());
         } else if (a == "--scale") {
             scaleOverride = std::atof(next("--scale").c_str());
+        } else if (a == "--logo") {
+            logoDir = next("--logo");
         } else if (a == "--inspect-match") {
             inspectMatch = next("--inspect-match");
         } else if (a == "--inspect-all") {
@@ -852,6 +883,8 @@ int main(int argc, char* argv[]) {
     } else {
         std::cerr << "[sea_cucumber] no events available in '" << data << "'\n";
     }
+    ed.serveLogo(logoDir);
+    ed.addNavigator();
     ed.show();
     app.Run();
     return 0;
