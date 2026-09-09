@@ -450,18 +450,31 @@ class EventDisplay {
             // so content tens of metres downstream would otherwise render far
             // off to one side. We shift the CONTENT because the web client
             // exposes no reliable way to place the camera.
+            //
+            // Per axis: if the region has an explicit window, centre on the
+            // window MIDPOINT. This makes the window control both the framing
+            // (its centre) and the zoom (its size) predictably -- narrow it to
+            // zoom in, shift it to pan -- and, crucially, it frames the whole
+            // window rather than just the geometry, so hits that extend past
+            // the drawn volumes are no longer chopped. Axes with no explicit
+            // window fall back to the geometry centroid.
             if (r.cfg.recenter && !keep.empty()) {
-                double xlo = 1e30, xhi = -1e30, ylo = 1e30, yhi = -1e30;
-                double zloS = 1e30, zhiS = -1e30;
+                double clo[3] = {1e30, 1e30, 1e30}, chi[3] = {-1e30, -1e30, -1e30};
                 for (const auto* rec : keep) {
                     const Double_t* t = rec->m.GetTranslation();
-                    xlo = std::min(xlo, t[0]); xhi = std::max(xhi, t[0]);
-                    ylo = std::min(ylo, t[1]); yhi = std::max(yhi, t[1]);
-                    zloS = std::min(zloS, t[2]); zhiS = std::max(zhiS, t[2]);
+                    for (int ax = 0; ax < 3; ++ax) {
+                        clo[ax] = std::min(clo[ax], t[ax]);
+                        chi[ax] = std::max(chi[ax], t[ax]);
+                    }
                 }
-                r.ox = 0.5 * (xlo + xhi);
-                r.oy = 0.5 * (ylo + yhi);
-                r.oz = 0.5 * (zloS + zhiS);
+                double c[3];
+                for (int ax = 0; ax < 3; ++ax) {
+                    c[ax] = r.has[ax] ? 0.5 * (r.lo[ax] + r.hi[ax]) * scale_
+                                      : 0.5 * (clo[ax] + chi[ax]);
+                }
+                r.ox = c[0];
+                r.oy = c[1];
+                r.oz = c[2];
             }
             // Manual nudge, given in mm -> scene units.
             r.ox += r.cfg.offset_x * scale_;
@@ -484,6 +497,47 @@ class EventDisplay {
                 d->SetMainTransparency(static_cast<Char_t>(
                     std::min(view_.transparencyForVolume(rec->name), r.cfg.max_transparency)));
                 r.geoHolder->AddElement(d);
+            }
+
+            // Force the ortho auto-fit to show the WHOLE window. Eve7's web
+            // viewer appears to scale its orthographic camera to one screen
+            // axis, so a detector that is long in z but thin transversely gets
+            // fit to the narrow transverse extent and the long z overflows the
+            // panel (the user then has to zoom out). To defeat that we add an
+            // invisible CUBE of corner points: equal half-extent on all three
+            // axes, sized to the LONGEST window axis and centred at the origin
+            // (where the recentred content sits). Whichever axis the fit keys
+            // on, the scale is then large enough to show the full extent.
+            // Points count toward the scene bounding box regardless of marker
+            // rendering. Trade-off: a long thin region will show empty space on
+            // its short axes -- that is the honest shape of the thing; narrow
+            // the window to zoom.
+            if (r.cfg.recenter) {
+                double half[3];
+                for (int ax = 0; ax < 3; ++ax) {
+                    if (r.has[ax]) {
+                        half[ax] = 0.5 * (r.hi[ax] - r.lo[ax]) * scale_;
+                    } else {
+                        double lo = 1e30, hi = -1e30;
+                        for (const auto* rec : keep) {
+                            const double c = rec->m.GetTranslation()[ax] - r.o(ax);
+                            lo = std::min(lo, c);
+                            hi = std::max(hi, c);
+                        }
+                        half[ax] = (hi > lo) ? 0.5 * (hi - lo) : 1.0;
+                    }
+                }
+                const double H = std::max({half[0], half[1], half[2]});
+                auto* frame = new REX::REvePointSet("fit_frame");
+                for (int i = 0; i < 8; ++i) {
+                    frame->SetNextPoint(static_cast<float>((i & 1) ? H : -H),
+                                        static_cast<float>((i & 2) ? H : -H),
+                                        static_cast<float>((i & 4) ? H : -H));
+                }
+                frame->SetMarkerStyle(1);
+                frame->SetMarkerSize(0);          // invisible: only the bbox matters
+                frame->SetMainTransparency(100);  // transparent as a fallback
+                r.geoHolder->AddElement(frame);
             }
             std::cout << "[sea_cucumber] region '" << r.cfg.name << "': " << keep.size()
                       << " shapes (rejected " << rejectedBig << " oversized, " << rejectedName
@@ -558,6 +612,8 @@ class EventDisplay {
         // Offset (scene units) subtracted from this region's contents so the
         // region is centred on the origin, where Eve7's camera auto-fit looks.
         double ox = 0, oy = 0, oz = 0;
+        // Per-axis accessor for the offset (0=x, 1=y, 2=z).
+        double o(int ax) const { return ax == 0 ? ox : (ax == 1 ? oy : oz); }
     };
 
     float sx(double mm) const { return static_cast<float>(mm * scale_); }

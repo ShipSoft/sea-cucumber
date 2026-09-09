@@ -36,6 +36,11 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 #
 # Alternatively `match` derives a z window from the geometry by volume name
 # (regex or glob, case-insensitive), for detectors you'd rather not hardcode.
+#   ZOOM & FRAMING: each region is centred on its window MIDPOINT, so the window
+#     controls both -- narrow zmin/zmax (or add an x/y window) to zoom IN, widen
+#     to zoom out, shift the window to pan. The whole window is framed, so hits
+#     extending past the drawn geometry are no longer chopped. offset_x/y/z
+#     nudge the framing by hand (mm); recenter=false keeps global coordinates.
 #   camera: "xz" side view (looking along y) | "yz" along the beam (looking
 #     along x) | "xy" transverse, beam's-eye (looking along z) | "3d"
 #   hit_marker_size: marker size for hits in THIS view (omit to use [hits]).
@@ -57,10 +62,15 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 [[region]]
 name = "Spectrometer"
 title = "Spectrometer (side view)"
-zmin = 83000.0
-zmax = 93000.0
+# Widened to cover every tracking station: event-16 hits cluster near 84k, 86k,
+# 93k and 95k mm, so the old 83k-93k cut off the last stations. Verify the true
+# geometry extent with:  --inspect 4  (read the station volumes' z spans).
+zmin = 82000.0
+zmax = 96000.0
 camera = "xz"
-max_shapes = 1200
+# Higher budget so more than the first stations render (applied at display
+# time, so this needs no cache rebuild).
+max_shapes = 6000
 max_transparency = 30
 
 # A front view selects a transverse slab instead of a z slab, e.g.:
@@ -75,10 +85,12 @@ max_transparency = 30
 [[region]]
 name = "Calorimeter"
 title = "Calorimeter (side view)"
+# The calorimeter hit cluster in event 16 spans ~97k-99.6k mm; the old 96k-98k
+# showed only its upstream third. Verify with:  --inspect 4
 zmin = 96000.0
-zmax = 98000.0
+zmax = 100000.0
 camera = "xz"
-max_shapes = 1200
+max_shapes = 6000
 max_transparency = 30
 
 [[region]]
@@ -92,7 +104,7 @@ title = "Scattering and Neutrino Detector (side view)"
 # Set zmin/zmax here if your geometry names it differently.
 match = "SND|Neutrino|Scattering|Emulsion"
 camera = "xz"
-max_shapes = 1200
+max_shapes = 6000
 max_transparency = 30
 
 

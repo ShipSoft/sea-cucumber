@@ -126,10 +126,13 @@ target_link_libraries(make_demo_event PRIVATE sea_cucumber_core)
 add_executable(make_geometry_cache tools/make_geometry_cache.cxx)
 target_link_libraries(make_geometry_cache PRIVATE sea_cucumber_core)
 
+add_executable(make_web_data tools/make_web_data.cxx)
+target_link_libraries(make_web_data PRIVATE sea_cucumber_core)
+
 # --- install -----------------------------------------------------------------
 include(GNUInstallDirs)
 install(
-    TARGETS sea_cucumber make_demo_event make_geometry_cache
+    TARGETS sea_cucumber make_demo_event make_geometry_cache make_web_data
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(
