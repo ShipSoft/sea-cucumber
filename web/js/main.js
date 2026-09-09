@@ -459,7 +459,7 @@ function createFloatingView(opts = {}) {
   panel.frame("3d");
   if (lastEvent) panel.setEvent(lastEvent, scale, win);
   panel.applyOpts();                                        // apply inherited visibility/size
-  const entry = { panel, el, name, win };
+  const entry = { panel, el, name, win, locked: false, borderColor: null };
   floats.push(entry);
   attachPick(panel);           // allow drawing a sub-region on this view
   selectView(entry);           // newly created view becomes the selected one
@@ -468,9 +468,9 @@ function createFloatingView(opts = {}) {
   // this view so the camera buttons and "Select view location" target it.
   el.addEventListener("pointerdown", () => selectView(entry), true);
 
-  // Move by dragging the title bar.
+  // Move by dragging the title bar (disabled when the view is locked).
   bar.addEventListener("pointerdown", (e) => {
-    if (e.target === close || e.target.tagName === "INPUT") return;
+    if (entry.locked || e.target === close || e.target.tagName === "INPUT") return;
     bringToFront(el);
     const sx = e.clientX, sy = e.clientY, ox = el.offsetLeft, oy = el.offsetTop;
     const move = (ev) => {
@@ -511,7 +511,194 @@ function createFloatingView(opts = {}) {
   });
 
   bringToFront(el);
+  // Right-click: context menu. Unlocked -> full menu; locked -> just Unlock
+  // (and colours), since a locked view is meant to sit still in a display.
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    selectView(entry);
+    if (entry.locked) {
+      showMenu(e.clientX, e.clientY, [
+        { label: "Unlock window", onClick: () => setLocked(entry, false) },
+        { label: "Set boundary colours…", onClick: () => showColourDialog(entry) },
+      ]);
+    } else {
+      showMenu(e.clientX, e.clientY, [
+        { label: "Resize numerically…", onClick: () => showResizeDialog(entry) },
+        { separator: true },
+        { label: "Stack left", onClick: () => stackWindow(entry, "left") },
+        { label: "Stack right", onClick: () => stackWindow(entry, "right") },
+        { label: "Stack top", onClick: () => stackWindow(entry, "top") },
+        { label: "Stack bottom", onClick: () => stackWindow(entry, "bottom") },
+        { separator: true },
+        { label: "Lock window", onClick: () => setLocked(entry, true) },
+        { label: "Set boundary colours…", onClick: () => showColourDialog(entry) },
+      ]);
+    }
+  });
+
   return entry;
+}
+
+// --- view context-menu actions --------------------------------------------
+
+// A lightweight context menu. `items` is a list of {label, onClick} and
+// {separator:true}. Closes on the next click anywhere or on Escape.
+function showMenu(x, y, items) {
+  closeMenu();
+  const menu = document.createElement("div");
+  menu.className = "ctxmenu";
+  menu.id = "ctxmenu";
+  for (const it of items) {
+    if (it.separator) {
+      const hr = document.createElement("div");
+      hr.className = "ctxmenu__sep";
+      menu.appendChild(hr);
+      continue;
+    }
+    const b = document.createElement("button");
+    b.className = "ctxmenu__item";
+    b.textContent = it.label;
+    b.addEventListener("click", () => { closeMenu(); it.onClick(); });
+    menu.appendChild(b);
+  }
+  document.body.appendChild(menu);
+  // Keep it on-screen.
+  const r = menu.getBoundingClientRect();
+  menu.style.left = Math.min(x, window.innerWidth - r.width - 4) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - r.height - 4) + "px";
+  // Close on a pointerdown OUTSIDE the menu, or on Escape. A pointerdown inside
+  // the menu is left alone so the item's click can fire.
+  setTimeout(() => {
+    window.addEventListener("pointerdown", outsideClose, true);
+    window.addEventListener("keydown", escClose);
+  }, 0);
+}
+function outsideClose(e) {
+  const m = $("ctxmenu");
+  if (m && m.contains(e.target)) return;
+  closeMenu();
+}
+function closeMenu() {
+  const m = $("ctxmenu");
+  if (m) m.remove();
+  window.removeEventListener("pointerdown", outsideClose, true);
+  window.removeEventListener("keydown", escClose);
+}
+function escClose(e) { if (e.key === "Escape") closeMenu(); }
+
+// A small centred popout dialog. `build(body, close)` fills the body; call
+// close() to dismiss. Returns nothing.
+function showPopout(title, build) {
+  const overlay = document.createElement("div");
+  overlay.className = "popout__overlay";
+  const box = document.createElement("div");
+  box.className = "popout";
+  const h = document.createElement("h3");
+  h.className = "popout__title";
+  h.textContent = title;
+  const body = document.createElement("div");
+  box.append(h, body);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.addEventListener("pointerdown", (e) => { if (e.target === overlay) close(); });
+  window.addEventListener("keydown", function esc(e) {
+    if (e.key === "Escape") { close(); window.removeEventListener("keydown", esc); }
+  });
+  build(body, close);
+}
+
+// 1) Resize numerically.
+function showResizeDialog(entry) {
+  showPopout("Resize view (pixels)", (body, close) => {
+    const w = Math.round(entry.el.offsetWidth);
+    const h = Math.round(entry.el.offsetHeight);
+    body.innerHTML =
+      `<label class="field">width <input id="rw" type="number" min="120" value="${w}"></label>` +
+      `<label class="field">height <input id="rh" type="number" min="100" value="${h}"></label>` +
+      `<div class="popout__actions"><button id="rok" class="btn">Apply</button>` +
+      `<button id="rcancel" class="btn btn--ghost">Cancel</button></div>`;
+    body.querySelector("#rcancel").addEventListener("click", close);
+    body.querySelector("#rok").addEventListener("click", () => {
+      const nw = Math.max(120, Number(body.querySelector("#rw").value) || w);
+      const nh = Math.max(100, Number(body.querySelector("#rh").value) || h);
+      entry.el.style.width = nw + "px";
+      entry.el.style.height = nh + "px";
+      close();
+    });
+  });
+}
+
+// 2) Stack to an edge, stopping on collision with another view.
+function rectOf(el) {
+  return { l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+}
+function stackWindow(entry, dir) {
+  const me = rectOf(entry.el);
+  const others = floats.filter((f) => f !== entry).map((f) => rectOf(f.el));
+  const W = window.innerWidth, H = window.innerHeight;
+  const vOverlap = (o) => me.t < o.t + o.h && o.t < me.t + me.h;   // share y-range
+  const hOverlap = (o) => me.l < o.l + o.w && o.l < me.l + me.w;   // share x-range
+
+  if (dir === "left") {
+    let x = 0;
+    for (const o of others) if (vOverlap(o) && o.l + o.w <= me.l) x = Math.max(x, o.l + o.w);
+    entry.el.style.left = x + "px";
+  } else if (dir === "right") {
+    let x = W - me.w;
+    for (const o of others) if (vOverlap(o) && o.l >= me.l + me.w) x = Math.min(x, o.l - me.w);
+    entry.el.style.left = Math.max(0, x) + "px";
+  } else if (dir === "top") {
+    let y = 0;
+    for (const o of others) if (hOverlap(o) && o.t + o.h <= me.t) y = Math.max(y, o.t + o.h);
+    entry.el.style.top = y + "px";
+  } else if (dir === "bottom") {
+    let y = H - me.h;
+    for (const o of others) if (hOverlap(o) && o.t >= me.t + me.h) y = Math.min(y, o.t - me.h);
+    entry.el.style.top = Math.max(0, y) + "px";
+  }
+}
+
+// 3) Lock / unlock: hide the chrome for a clean display, freeze position.
+function setLocked(entry, locked) {
+  entry.locked = locked;
+  entry.el.classList.toggle("is-locked", locked);
+  applyBorder(entry);
+}
+
+// 4) Boundary colours.
+function applyBorder(entry) {
+  // The border colour persists across lock/unlock; null => stylesheet default.
+  entry.el.style.borderColor = entry.borderColor || "";
+}
+function showColourDialog(entry) {
+  showPopout("Boundary colour", (body, close) => {
+    const cur = entry.borderColor || "#e3a93c";
+    body.innerHTML =
+      `<input id="cpick" type="color" value="${toHex6(cur)}" class="cpick" />` +
+      `<label class="field">hex <input id="chex" type="text" value="${cur}" spellcheck="false"></label>` +
+      `<div class="popout__actions">` +
+      `<button id="cdefault" class="btn btn--ghost">Restore default</button>` +
+      `<button id="cok" class="btn">Done</button></div>`;
+    const pick = body.querySelector("#cpick");
+    const hex = body.querySelector("#chex");
+    const apply = (v) => { entry.borderColor = v; applyBorder(entry); };
+    pick.addEventListener("input", () => { hex.value = pick.value; apply(pick.value); });
+    hex.addEventListener("input", () => {
+      const v = hex.value.trim();
+      if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) { pick.value = toHex6(v); apply(v); }
+    });
+    body.querySelector("#cdefault").addEventListener("click", () => {
+      entry.borderColor = null; applyBorder(entry); close();
+    });
+    body.querySelector("#cok").addEventListener("click", close);
+  });
+}
+// Normalise #rgb / #rrggbb to #rrggbb for the native colour input.
+function toHex6(v) {
+  const m = /^#([0-9a-fA-F]{3})$/.exec(v);
+  if (m) return "#" + m[1].split("").map((c) => c + c).join("");
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#e3a93c";
 }
 
 const newViewBtn = $("newView");
@@ -537,6 +724,8 @@ function currentSetup() {
       win: f.win,
       opts: { ...f.panel.opts },
       camera: f.panel.getCameraState(),
+      locked: f.locked,
+      borderColor: f.borderColor,
     })),
   };
 }
@@ -590,6 +779,8 @@ function loadSetup(setup) {
     }
     if (v.opts) { entry.panel.opts = { ...entry.panel.opts, ...v.opts }; entry.panel.applyOpts(); }
     applyCamera(entry.panel, v.camera);
+    if (v.borderColor) { entry.borderColor = v.borderColor; applyBorder(entry); }
+    if (v.locked) setLocked(entry, true);
   }
 
   selectView(null);   // deselect; sidebar targets main
@@ -729,6 +920,12 @@ function tick() {
 }
 
 (async function boot() {
+  // Version: read the VERSION text file (served alongside the page). Shown under
+  // the wordmark; silently omitted if the file is absent.
+  try {
+    const r = await fetch("VERSION", { cache: "no-store" });
+    if (r.ok) { const v = (await r.text()).trim(); const el = $("version"); if (el && v) el.textContent = "v" + v; }
+  } catch (_) { /* no version file */ }
   try {
     setStatus("Loading…");
     await data.loadManifest();

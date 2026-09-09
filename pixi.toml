@@ -3,6 +3,7 @@
 
 [workspace]
 name = "sea_cucumber"
+version = "0.1.0"
 description = "REve event display for the SHiP experiment"
 # SHiP-specific packages (shipdatamodel, geomodel, ...) come from prefix.dev/ship,
 # exactly as aegir resolves them; everything else from conda-forge.
