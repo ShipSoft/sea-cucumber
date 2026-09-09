@@ -53,6 +53,7 @@
 
 #include "EventNavigator.h"
 #include "GeoModelGeometrySource.h"
+#include "GeometryCache.h"
 #include "IEventSource.h"
 #include "IGeometrySource.h"
 #include "RNTupleEventSource.h"
@@ -185,6 +186,95 @@ class EventDisplay {
     // pass (no shape conversion), so this costs almost nothing even on a
     // ~1M-volume geometry. Returns the union window, which the caller uses to
     // restrict what the expensive walk actually converts.
+    // Assign each region's window from the per-region match accumulators
+    // (lo/hi/nmatch) plus its explicit config, and return the union z-window.
+    // Shared by the live-scan and cache-replay resolvers.
+    std::pair<double, double> finalizeWindows(const std::vector<double>& lo,
+                                              const std::vector<double>& hi,
+                                              const std::vector<std::size_t>& nmatch) {
+        double uLo = 1e30, uHi = -1e30;
+        static const char* kAx[3] = {"x", "y", "z"};
+        for (std::size_t k = 0; k < regions_.size(); ++k) {
+            auto& r = regions_[k];
+            std::string desc;
+            for (int ax = 0; ax < 3; ++ax) {
+                if (!r.cfg.has_window[ax]) continue;
+                r.has[ax] = true;
+                r.lo[ax] = r.cfg.wmin[ax];
+                r.hi[ax] = r.cfg.wmax[ax];
+                desc += std::string(desc.empty() ? "" : ", ") + kAx[ax] + " [" +
+                        std::to_string(static_cast<long long>(r.lo[ax])) + ", " +
+                        std::to_string(static_cast<long long>(r.hi[ax])) + "]";
+            }
+            if (!desc.empty()) {
+                r.resolved = true;
+                std::cout << "[sea_cucumber] region '" << r.cfg.name << "': window " << desc
+                          << " mm (explicit)\n";
+            } else if (nmatch[k] > 0 && hi[k] > lo[k]) {
+                // Name-derived windows constrain z (that is what locating a
+                // subsystem along the beam means).
+                const double margin = r.cfg.margin_frac * std::max(1.0, hi[k] - lo[k]);
+                r.has[2] = true;
+                r.lo[2] = lo[k] - margin;
+                r.hi[2] = hi[k] + margin;
+                r.resolved = true;
+                std::cout << "[sea_cucumber] region '" << r.cfg.name << "': window from "
+                          << nmatch[k] << " volumes matching '" << r.cfg.match << "' -> z ["
+                          << r.lo[2] << ", " << r.hi[2] << "] mm\n";
+            } else {
+                std::cerr << "[sea_cucumber] region '" << r.cfg.name
+                          << "': no window resolved -- set xmin/xmax, ymin/ymax or zmin/zmax, "
+                             "or a `match` pattern\n";
+            }
+            if (r.resolved && r.has[2]) {
+                uLo = std::min(uLo, r.lo[2]);
+                uHi = std::max(uHi, r.hi[2]);
+            } else if (r.resolved) {
+                // A region with no z constraint needs the whole beam line, so
+                // the walk cannot be restricted in z.
+                uLo = -1e30;
+                uHi = 1e30;
+            }
+        }
+        return {uLo, uHi};
+    }
+
+    // Resolve region windows by REPLAYING a geometry source (a cache), instead
+    // of scanning the live .db. Used on the --geo-cache path so the database is
+    // never touched. Costs one extra replay of the (already reduced) region
+    // cache -- cheap compared to a GeoModel build.
+    std::pair<double, double> resolveRegionWindowsFromSource(IGeometrySource& src) {
+        std::vector<double> lo(regions_.size(), 1e30), hi(regions_.size(), -1e30);
+        std::vector<std::size_t> nmatch(regions_.size(), 0);
+        std::vector<std::regex> res(regions_.size());
+        std::vector<bool> useRe(regions_.size(), false);
+        for (std::size_t k = 0; k < regions_.size(); ++k) {
+            const auto& c = regions_[k].cfg;
+            if (c.hasAnyWindow() || c.match.empty()) continue;
+            try {
+                res[k] = std::regex(c.match, std::regex::ECMAScript | std::regex::icase);
+                useRe[k] = true;
+            } catch (const std::regex_error& e) {
+                std::cerr << "[sea_cucumber] region '" << c.name << "': bad match regex ("
+                          << e.what() << ")\n";
+            }
+        }
+        src.provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
+            const double z = g.GetTranslation()[2] / scale_;
+            double dz = 0.0;
+            if (const auto* bb = dynamic_cast<const TGeoBBox*>(shape)) dz = bb->GetDZ() / scale_;
+            for (std::size_t k = 0; k < regions_.size(); ++k) {
+                if (useRe[k] && std::regex_search(name, res[k])) {
+                    lo[k] = std::min(lo[k], z - dz);
+                    hi[k] = std::max(hi[k], z + dz);
+                    ++nmatch[k];
+                }
+            }
+            delete shape;  // we own the emitted shape in this scan-only replay
+        });
+        return finalizeWindows(lo, hi, nmatch);
+    }
+
     std::pair<double, double> resolveRegionWindows(const std::string& dbPath,
                                                    const GeoLoadOptions& baseOpt) {
         bool needScan = false;
@@ -250,51 +340,7 @@ class EventDisplay {
                       << " ms\n";
         }
 
-        double uLo = 1e30, uHi = -1e30;
-        static const char* kAx[3] = {"x", "y", "z"};
-        for (std::size_t k = 0; k < regions_.size(); ++k) {
-            auto& r = regions_[k];
-            std::string desc;
-            for (int ax = 0; ax < 3; ++ax) {
-                if (!r.cfg.has_window[ax]) continue;
-                r.has[ax] = true;
-                r.lo[ax] = r.cfg.wmin[ax];
-                r.hi[ax] = r.cfg.wmax[ax];
-                desc += std::string(desc.empty() ? "" : ", ") + kAx[ax] + " [" +
-                        std::to_string(static_cast<long long>(r.lo[ax])) + ", " +
-                        std::to_string(static_cast<long long>(r.hi[ax])) + "]";
-            }
-            if (!desc.empty()) {
-                r.resolved = true;
-                std::cout << "[sea_cucumber] region '" << r.cfg.name << "': window " << desc
-                          << " mm (explicit)\n";
-            } else if (nmatch[k] > 0 && hi[k] > lo[k]) {
-                // Name-derived windows constrain z (that is what locating a
-                // subsystem along the beam means).
-                const double margin = r.cfg.margin_frac * std::max(1.0, hi[k] - lo[k]);
-                r.has[2] = true;
-                r.lo[2] = lo[k] - margin;
-                r.hi[2] = hi[k] + margin;
-                r.resolved = true;
-                std::cout << "[sea_cucumber] region '" << r.cfg.name << "': window from "
-                          << nmatch[k] << " volumes matching '" << r.cfg.match << "' -> z ["
-                          << r.lo[2] << ", " << r.hi[2] << "] mm\n";
-            } else {
-                std::cerr << "[sea_cucumber] region '" << r.cfg.name
-                          << "': no window resolved -- set xmin/xmax, ymin/ymax or zmin/zmax, "
-                             "or a `match` pattern\n";
-            }
-            if (r.resolved && r.has[2]) {
-                uLo = std::min(uLo, r.lo[2]);
-                uHi = std::max(uHi, r.hi[2]);
-            } else if (r.resolved) {
-                // A region with no z constraint needs the whole beam line, so
-                // the walk cannot be restricted in z.
-                uLo = -1e30;
-                uHi = 1e30;
-            }
-        }
-        return {uLo, uHi};
+        return finalizeWindows(lo, hi, nmatch);
     }
 
     // One deep walk, distributed to every region. Cheaper than walking per
@@ -663,6 +709,7 @@ void usage(const char* a0) {
     std::cerr << "Usage: " << a0
               << " --geometry <ship.db> --data <events.root> [--view <view.toml>]\n"
                  "               [--ntuple <name>] [--event <i>] [--scale <f>] [--logo <dir>]\n"
+                 "               [--geo-cache <prefix>]  use/require cached geometry (see make_geometry_cache)\n"
                  "               [--inspect [depth]] [--inspect-match <pat>] [--inspect-all]\n"
                  "                     list the geometry's volumes (name, count, z span) and "
                  "exit;\n"
@@ -671,7 +718,7 @@ void usage(const char* a0) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    std::string geometry, data, viewFile, ntuple;
+    std::string geometry, data, viewFile, ntuple, geoCache;
     std::int64_t event = 0;
     double scaleOverride = -1.0;
     int inspectDepth = -1;  // >=0 => print a geometry inventory and exit
@@ -695,6 +742,8 @@ int main(int argc, char* argv[]) {
             viewFile = next("--view");
         } else if (a == "--ntuple") {
             ntuple = next("--ntuple");
+        } else if (a == "--geo-cache") {
+            geoCache = next("--geo-cache");
         } else if (a == "--event") {
             event = std::atoll(next("--event").c_str());
         } else if (a == "--scale") {
@@ -847,26 +896,51 @@ int main(int argc, char* argv[]) {
     shipdisp::EventDisplay ed(view);
     ed.init();
     ed.setSource(&source);
-    try {
-        ed.loadGeometry(geoSrc);
 
-        // Resolve the region windows with a cheap, shape-free scan, then
-        // restrict the expensive walk to their union. Without this, a large
-        // geometry builds hundreds of thousands of shapes (and hits the
-        // emission cap) before ever reaching the downstream detectors.
-        const auto [uLo, uHi] = ed.resolveRegionWindows(geoSrc.resolvedPath(), regionOpt);
-        // uLo/uHi are sentinel-wide if any region is unconstrained in z, in
-        // which case we must not restrict the walk.
-        if (uHi > uLo && uLo > -1e29 && uHi < 1e29) {
-            const double pad = 0.1 * std::max(1.0, uHi - uLo);
-            regionOpt.use_z_window = true;
-            regionOpt.z_window_min = uLo - pad;
-            regionOpt.z_window_max = uHi + pad;
-            std::cout << "[sea_cucumber] region walk restricted to z ["
-                      << regionOpt.z_window_min << ", " << regionOpt.z_window_max << "] mm\n";
+    // Prefer cached geometry when a valid cache is present: it skips the
+    // multi-second GeoModel read entirely (ALICE O2 event-display pattern,
+    // arXiv:2503.00088). Falls back to the live .db otherwise.
+    const std::string mainCachePath = geoCache.empty() ? "" : geoCache + ".main.root";
+    const std::string regionCachePath = geoCache.empty() ? "" : geoCache + ".region.root";
+    const bool useCache = !geoCache.empty() &&
+                          shipdisp::CachedGeometrySource::isValidCache(mainCachePath) &&
+                          shipdisp::CachedGeometrySource::isValidCache(regionCachePath);
+    if (!geoCache.empty() && !useCache) {
+        std::cerr << "[sea_cucumber] geometry cache '" << geoCache
+                  << ".{main,region}.root' missing or stale -- falling back to the .db "
+                     "(run make_geometry_cache to build it)\n";
+    }
+
+    try {
+        if (useCache) {
+            std::cout << "[sea_cucumber] using geometry cache '" << geoCache << ".*'\n";
+            shipdisp::CachedGeometrySource mainCache(mainCachePath);
+            ed.loadGeometry(mainCache);
+            // Resolve windows from the region cache (no .db touch), then replay
+            // it to build. The cache is already depth/exclude-bounded, so no z
+            // restriction is needed.
+            shipdisp::CachedGeometrySource regionScan(regionCachePath);
+            ed.resolveRegionWindowsFromSource(regionScan);
+            shipdisp::CachedGeometrySource regionCache(regionCachePath);
+            ed.loadRegionGeometry(regionCache);
+        } else {
+            ed.loadGeometry(geoSrc);
+
+            // Resolve the region windows with a cheap, shape-free scan, then
+            // restrict the expensive walk to their union.
+            const auto [uLo, uHi] = ed.resolveRegionWindows(geoSrc.resolvedPath(), regionOpt);
+            if (uHi > uLo && uLo > -1e29 && uHi < 1e29) {
+                const double pad = 0.1 * std::max(1.0, uHi - uLo);
+                regionOpt.use_z_window = true;
+                regionOpt.z_window_min = uLo - pad;
+                regionOpt.z_window_max = uHi + pad;
+                std::cout << "[sea_cucumber] region walk restricted to z ["
+                          << regionOpt.z_window_min << ", " << regionOpt.z_window_max
+                          << "] mm\n";
+            }
+            shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
+            ed.loadRegionGeometry(regionSrc);
         }
-        shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
-        ed.loadRegionGeometry(regionSrc);
     } catch (const std::exception& e) {
         std::cerr << "[sea_cucumber] geometry load failed: " << e.what() << "\n";
         return 1;

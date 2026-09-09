@@ -74,7 +74,9 @@ add_library(
     src/GeoModelLoader.cxx
     src/GeoModelGeometrySource.cxx
     src/ViewConfig.cxx
+    src/GeometryCache.cxx
     src/EventNavigator.cxx
+    G__SeaCucumberNav.cxx
 )
 
 target_include_directories(
@@ -114,22 +116,20 @@ endif()
 target_compile_options(sea_cucumber_core PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- the executable ----------------------------------------------------------
-# G__SeaCucumberNav.cxx is compiled straight into the executable on purpose.
-# A ROOT dictionary registers its class through static initialisers that no
-# other code references; inside a STATIC archive the linker discards that
-# object file, and the "// *MENU*" entries silently never appear. Sources
-# listed directly on a target are never dropped.
-add_executable(sea_cucumber src/sea_cucumber.cxx G__SeaCucumberNav.cxx)
+add_executable(sea_cucumber src/sea_cucumber.cxx)
 target_link_libraries(sea_cucumber PRIVATE sea_cucumber_core)
 
 # --- demo-event generator (writes a synthetic events RNTuple) ----------------
 add_executable(make_demo_event tools/make_demo_event.cxx)
 target_link_libraries(make_demo_event PRIVATE sea_cucumber_core)
 
+add_executable(make_geometry_cache tools/make_geometry_cache.cxx)
+target_link_libraries(make_geometry_cache PRIVATE sea_cucumber_core)
+
 # --- install -----------------------------------------------------------------
 include(GNUInstallDirs)
 install(
-    TARGETS sea_cucumber make_demo_event
+    TARGETS sea_cucumber make_demo_event make_geometry_cache
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(

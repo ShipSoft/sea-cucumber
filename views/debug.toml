@@ -1,32 +1,58 @@
+#   recenter: true (default) re-expresses the region in a frame centred on
+#     itself. Eve7's web client auto-fits its camera about the ORIGIN, so a
+#     region 50-90 m downstream would otherwise render far off to one side.
+#     There is no reliable C++ API to move the camera, so we move the content.
+#   offset_x/y/z (mm): manual nudge on top of the automatic centring.
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# DEBUG view config for sea_cucumber.
+#
+# Everything here is deliberately maximally permissive, to answer one question:
+# "is the region scene empty, or is the camera looking at nothing?"
+#   * cameras are "3d" (perspective) -- these DO auto-fit in REve web
+#   * windows are very wide, so content cannot fall outside them
+#   * transparency 0 = fully opaque, so nothing is invisible
+#   * nothing is excluded from the region walk
+#
+# Run:  sea_cucumber --geometry <db> --data <root> --view views/debug.toml
+#
+# If the right-hand views show content with this file but not with
+# default.toml, the difference is the camera or the window -- narrow it down by
+# changing ONE thing at a time back toward default.toml.
+
 hit_scale = 0.01
 ntuple = "events"
 
-scan_depth = 4
-region_depth = 5
-
-region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
+# Nothing hidden from the region walk.
+region_exclude = []
 
 [[region]]
 name = "WideA"
 title = "DEBUG wide 3D"
-xmin = -6000.0
-xmax = 6000.0
-zmin = 30000.0
-zmax = 100000.0
+zmin = -500000.0
+zmax = 500000.0
 camera = "3d"
-max_shapes = 5000
-max_transparency = 30
+max_shapes = 2000
+max_transparency = 0
 
 [[region]]
 name = "SpectroTest"
 title = "DEBUG spectrometer 3D"
-xmin = -6000.0
-xmax = 6000.0
-zmin = 80000.0
-zmax = 100000.0
+zmin = 83000.0
+zmax = 93000.0
 camera = "3d"
 max_shapes = 2000
-max_transparency = 50
+max_transparency = 0
+
+[[region]]
+name = "SpectroOrtho"
+title = "DEBUG spectrometer XZ"
+zmin = 83000.0
+zmax = 93000.0
+camera = "xz"
+max_shapes = 2000
+max_transparency = 0
 
 [geometry]
 include = ['.*']
@@ -36,56 +62,12 @@ stop_at_match = true
 default_color = "#20428A"
 default_transparency = 40
 
-[[geometry.style]]
-match = "DecayVolume"
-color = "#F1DEBC"      # cream vessel
-transparency = 55
-[[geometry.style]]
-match = "Vessel"
-color = "#F1DEBC"
-transparency = 55
-[[geometry.style]]
-match = "Tracker"
-color = "#20428A"
-transparency = 55
-[[geometry.style]]
-match = "Magnet"
-color = "#20428A"
-transparency = 60
-[[geometry.style]]
-match = "Timing"
-color = "#20428A"
-transparency = 50
-[[geometry.style]]
-match = "SBT"
-color = "#20428A"
-transparency = 80
-[[geometry.style]]
-match = "ECAL"
-color = "#081B3C"
-transparency = 45
-[[geometry.style]]
-match = "HCAL"
-color = "#081B3C"
-transparency = 50
-[[geometry.style]]
-match = "MuonShield"
-color = "#081B3C"
-transparency = 60
-[[geometry.style]]
-match = "Target"
-color = "#C64284"
-transparency = 40
-
 [hits]
 marker_style = 20
-marker_size = 2.5
-color_by_energy = true    
-color_low = "#F1DEBC"
+marker_size = 4.0
+color_by_energy = true
 color_high = "#C64284"
 
 [decay]
-draw = true               # truth decay-vertex marker
+draw = true
 color = "#F1DEBC"
-marker_style = 29         # filled star
-marker_size = 3.0

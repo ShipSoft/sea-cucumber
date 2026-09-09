@@ -20,15 +20,16 @@ install = { cmd = "cmake --install build", depends-on = ["build"] }
 # `pixi run test` builds (incl. tests) then runs CTest.
 test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
 # Convenience: run the display (append --geometry ... --data ...).
-sea_cucumber = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
-sc = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
-event_display = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
-ED = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
+run = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
 # Generate a demo event and display it, same geometry for both. Pass --geometry:
 #   pixi run demo --geometry /path/to/ship_geometry.db
 demo = { cmd = "bash tools/run_demo.sh", depends-on = ["build"] }
 # Just write demo_events.root (append --geometry <db>):
 demo-event = { cmd = "./build/make_demo_event --output demo_events.root", depends-on = ["build"] }
+# Build the geometry cache so the display starts without re-reading the .db.
+#   pixi run geo-cache --geometry /path/ship_geometry.db --view views/default.toml
+# then run with:  pixi run run --geo-cache geocache --geometry ... --data ...
+geo-cache = { cmd = "./build/make_geometry_cache --out-prefix geocache", depends-on = ["build"] }
 clean = "rm -rf build"
 
 [dependencies]
