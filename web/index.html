@@ -52,15 +52,24 @@
           <label class="toggle"><input type="checkbox" id="tGeo" checked /> geometry</label>
           <label class="toggle"><input type="checkbox" id="tHits" checked /> hits</label>
           <label class="toggle"><input type="checkbox" id="tVertex" checked /> decay vertex</label>
+          <label class="slider">hit size <span id="hitSizeVal" class="mono">4</span>
+            <input type="range" id="hitSize" min="1" max="16" step="1" value="4" />
+          </label>
         </section>
 
         <section class="ctl">
           <h2 class="ctl__h">Views</h2>
           <button id="newView" class="btn btn--wide">+ New view</button>
+          <button id="selectLoc" class="btn btn--wide btn--ghost">Select view location</button>
+          <div class="row2">
+            <button id="saveSetup" class="btn btn--ghost">Save setup</button>
+            <button id="loadSetup" class="btn btn--ghost">Load setup</button>
+          </div>
+          <input type="file" id="loadFile" accept="application/json,.json" hidden />
         </section>
 
         <section class="ctl">
-          <h2 class="ctl__h">Main camera</h2>
+          <h2 class="ctl__h">Camera <span class="hint">(selected view, else main)</span></h2>
           <div class="cams" role="group" aria-label="Main camera">
             <button class="btn btn--ghost" data-cam="3d">3D</button>
             <button class="btn btn--ghost" data-cam="side">Side</button>
@@ -72,31 +81,17 @@
         <div class="side__foot" id="status"></div>
       </aside>
 
-      <!-- CENTRE: main view -->
+      <!-- CENTRE: main view (region views are now user-created via + New view) -->
       <main class="main">
         <canvas id="view-main" class="panel__canvas"></canvas>
         <span class="panel__label">Main</span>
       </main>
-
-      <!-- RIGHT: three region views -->
-      <div class="regions">
-        <section class="rpanel">
-          <canvas id="view-r0" class="panel__canvas"></canvas>
-          <span class="panel__label" id="lbl-r0">Spectrometer</span>
-        </section>
-        <section class="rpanel">
-          <canvas id="view-r1" class="panel__canvas"></canvas>
-          <span class="panel__label" id="lbl-r1">Calorimeter</span>
-        </section>
-        <section class="rpanel">
-          <canvas id="view-r2" class="panel__canvas"></canvas>
-          <span class="panel__label" id="lbl-r2">SND</span>
-        </section>
-      </div>
     </div>
 
     <!-- floating user-created views live here, above the fixed grid -->
     <div id="float-layer" class="float-layer"></div>
+    <!-- rubber-band rectangle drawn while selecting a view location -->
+    <div id="rubber" class="rubber" hidden></div>
 
     <script type="module" src="js/main.js"></script>
   </body>

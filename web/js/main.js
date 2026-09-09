@@ -49,6 +49,9 @@ class Panel {
     this.gHits = new THREE.Group();
     this.gVertex = new THREE.Group();
     this.scene.add(this.gGeo, this.gHits, this.gVertex);
+    // Per-panel display options (independent of other panels). A new view
+    // inherits these from the view it was created from.
+    this.opts = { geo: true, hits: true, vertex: true, hitSize: 4 };
 
     this.box = new THREE.Box3(); // geometry bounds, for framing
     this.offset = new THREE.Vector3(0, 0, 0); // recentre shift (scene units)
@@ -63,49 +66,18 @@ class Panel {
     }
   }
 
-  // Build geometry. `meshes` are raw producer meshes (mm). We MERGE meshes that
-  // share a colour+transparency into a single BufferGeometry each: ~20k separate
-  // THREE.Mesh objects means ~20k draw calls per frame, which alone stalls the
-  // browser. Merging cuts that to a handful (one per distinct style).
-  setGeometry(meshes, scale, win) {
+  // Build geometry from precomputed style buckets (see computeGeometry). Merging
+  // ~20k meshes into a few BufferGeometries is what keeps draw calls low; doing
+  // that merge (and the normal computation) ONCE and sharing the CPU arrays
+  // across panels is what makes opening a new full-detector view fast.
+  setGeometry(precomp) {
     this.clear(this.gGeo);
-
-    this.offset.set(0, 0, 0);
-    if (win) {
-      for (const ax of [0, 1, 2]) {
-        if (win[ax]) this.offset.setComponent(ax, 0.5 * (win[ax][0] + win[ax][1]) * scale);
-      }
-    }
-
-    const buckets = new Map(); // styleKey -> { color, transparency, pos:[], idx:[] }
-    const box = new THREE.Box3();
-    for (const m of meshes) {
-      if (!m.vertices || !m.indices) continue;
-      if (win && !meshInWindow(m, win)) continue;
-      const t = m.transparency || 0;
-      const color = m.color || "#e3a93c";
-      const key = color + "|" + t;
-      let bk = buckets.get(key);
-      if (!bk) { bk = { color, transparency: t, pos: [], idx: [] }; buckets.set(key, bk); }
-      const base = bk.pos.length / 3;
-      for (let i = 0; i < m.vertices.length; i += 3) {
-        const x = m.vertices[i] * scale - this.offset.x;
-        const y = m.vertices[i + 1] * scale - this.offset.y;
-        const z = m.vertices[i + 2] * scale - this.offset.z;
-        bk.pos.push(x, y, z);
-        if (x < box.min.x) box.min.x = x; if (x > box.max.x) box.max.x = x;
-        if (y < box.min.y) box.min.y = y; if (y > box.max.y) box.max.y = y;
-        if (z < box.min.z) box.min.z = z; if (z > box.max.z) box.max.z = z;
-      }
-      for (let i = 0; i < m.indices.length; i++) bk.idx.push(m.indices[i] + base);
-    }
-
-    for (const bk of buckets.values()) {
-      if (!bk.pos.length) continue;
+    this.offset.set(precomp.offset[0], precomp.offset[1], precomp.offset[2]);
+    for (const bk of precomp.buckets) {
       const geom = new THREE.BufferGeometry();
-      geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(bk.pos), 3));
-      geom.setIndex(bk.idx);  // three.js chooses Uint16/Uint32 as needed
-      geom.computeVertexNormals();
+      geom.setAttribute("position", new THREE.BufferAttribute(bk.positions, 3));
+      geom.setAttribute("normal", new THREE.BufferAttribute(bk.normals, 3));
+      geom.setIndex(new THREE.BufferAttribute(bk.indices, 1));
       const mat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(bk.color),
         transparent: bk.transparency > 0,
@@ -117,10 +89,7 @@ class Panel {
       });
       this.gGeo.add(new THREE.Mesh(geom, mat));
     }
-
-    this.box = box.isEmpty()
-      ? new THREE.Box3(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1))
-      : box;
+    this.box = precomp.box;
     this.invalidate();
   }
 
@@ -141,7 +110,7 @@ class Panel {
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
       this.gHits.add(new THREE.Points(g, new THREE.PointsMaterial(
-        { color: COL.pink, size: 4, sizeAttenuation: false })));
+        { color: COL.pink, size: this.opts.hitSize, sizeAttenuation: false })));
     }
 
     if (ev.vertex && (!win || hitInWindow(ev.vertex, win))) {
@@ -152,6 +121,22 @@ class Panel {
       this.gVertex.add(new THREE.Points(g, new THREE.PointsMaterial(
         { color: COL.pinkLt, size: 11, sizeAttenuation: false })));
     }
+    this.invalidate();
+  }
+
+  // Apply this panel's display options (visibility + hit size).
+  applyOpts() {
+    this.gGeo.visible = this.opts.geo;
+    this.gHits.visible = this.opts.hits;
+    this.gVertex.visible = this.opts.vertex;
+    this.setHitSize(this.opts.hitSize);
+    this.invalidate();
+  }
+
+  // Update hit marker size live, without rebuilding the event.
+  setHitSize(px) {
+    this.opts.hitSize = px;
+    for (const pts of this.gHits.children) { pts.material.size = px; }
     this.invalidate();
   }
 
@@ -202,6 +187,24 @@ class Panel {
 
   // Free GPU resources and the WebGL context. Called when a floating panel is
   // closed, so contexts don't leak (browsers cap them at ~16).
+  // Capture / restore camera + orbit target, so a saved setup reproduces the
+  // exact framing of each view (including manual orbits, not just presets).
+  getCameraState() {
+    return {
+      pos: this.camera.position.toArray(),
+      target: this.controls.target.toArray(),
+      up: this.camera.up.toArray(),
+    };
+  }
+  setCameraState(s) {
+    if (s.up) this.camera.up.fromArray(s.up);
+    if (s.pos) this.camera.position.fromArray(s.pos);
+    if (s.target) this.controls.target.fromArray(s.target);
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+    this.invalidate();
+  }
+
   dispose() {
     this.clear(this.gGeo);
     this.clear(this.gHits);
@@ -218,15 +221,33 @@ function inWin1(v, w) { return !w || (v >= w[0] && v <= w[1]); }
 function hitInWindow(h, win) {
   return inWin1(h.x, win[0]) && inWin1(h.y, win[1]) && inWin1(h.z, win[2]);
 }
-// keep a mesh if its centroid falls in every set axis window.
+// Keep a mesh only if its centroid is inside every set axis window AND its
+// extent along each windowed axis doesn't vastly exceed that window. The extent
+// test is what stops a big mother envelope (e.g. the decay vessel), whose
+// centroid sits at the vessel centre, from being pulled in whole when you box a
+// small region there -- the same "oversized" rejection the REve path uses.
 function meshInWindow(m, win) {
   let cx = 0, cy = 0, cz = 0;
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
   const n = m.vertices.length / 3;
   for (let i = 0; i < m.vertices.length; i += 3) {
-    cx += m.vertices[i]; cy += m.vertices[i + 1]; cz += m.vertices[i + 2];
+    const x = m.vertices[i], y = m.vertices[i + 1], z = m.vertices[i + 2];
+    cx += x; cy += y; cz += z;
+    if (x < lo[0]) lo[0] = x; if (x > hi[0]) hi[0] = x;
+    if (y < lo[1]) lo[1] = y; if (y > hi[1]) hi[1] = y;
+    if (z < lo[2]) lo[2] = z; if (z > hi[2]) hi[2] = z;
   }
-  cx /= n; cy /= n; cz /= n;
-  return inWin1(cx, win[0]) && inWin1(cy, win[1]) && inWin1(cz, win[2]);
+  const c = [cx / n, cy / n, cz / n];
+  for (let a = 0; a < 3; a++) {
+    const w = win[a];
+    if (!w) continue;                              // axis unconstrained
+    if (c[a] < w[0] || c[a] > w[1]) return false;  // centroid outside
+    const winLen = w[1] - w[0];
+    const meshLen = hi[a] - lo[a];
+    // Reject volumes much larger than the window on a constrained axis.
+    if (meshLen > 1.5 * winLen + 1e-6) return false;
+  }
+  return true;
 }
 // convert a manifest region's window object to the [x,y,z] array form.
 function winFromRegion(rgn) {
@@ -235,15 +256,76 @@ function winFromRegion(rgn) {
   return [ax("x"), ax("y"), ax("z")];
 }
 
+// Merge raw producer meshes (mm) into a few style buckets, compute normals once,
+// and return {buckets, box, offset} with SHARED typed arrays. The result is
+// reusable across panels (each still uploads to its own GL context, but the CPU
+// merge and normal computation -- the slow part of opening a view -- happen just
+// once). `win` filters + recentres; null => full detector.
+const _fullGeomCache = { key: null, value: null };
+function computeGeometry(meshes, scale, win) {
+  // Full-detector (null window) is by far the common, expensive case: cache it.
+  if (!win && _fullGeomCache.value) return _fullGeomCache.value;
+
+  const offset = [0, 0, 0];
+  if (win) for (const ax of [0, 1, 2]) if (win[ax]) offset[ax] = 0.5 * (win[ax][0] + win[ax][1]) * scale;
+
+  const buckets = new Map();
+  const box = new THREE.Box3();
+  for (const m of meshes) {
+    if (!m.vertices || !m.indices) continue;
+    if (win && !meshInWindow(m, win)) continue;
+    const t = m.transparency || 0;
+    const color = m.color || "#e3a93c";
+    const key = color + "|" + t;
+    let bk = buckets.get(key);
+    if (!bk) { bk = { color, transparency: t, pos: [], idx: [] }; buckets.set(key, bk); }
+    const base = bk.pos.length / 3;
+    for (let i = 0; i < m.vertices.length; i += 3) {
+      const x = m.vertices[i] * scale - offset[0];
+      const y = m.vertices[i + 1] * scale - offset[1];
+      const z = m.vertices[i + 2] * scale - offset[2];
+      bk.pos.push(x, y, z);
+      if (x < box.min.x) box.min.x = x; if (x > box.max.x) box.max.x = x;
+      if (y < box.min.y) box.min.y = y; if (y > box.max.y) box.max.y = y;
+      if (z < box.min.z) box.min.z = z; if (z > box.max.z) box.max.z = z;
+    }
+    for (let i = 0; i < m.indices.length; i++) bk.idx.push(m.indices[i] + base);
+  }
+
+  // Finalise each bucket: typed arrays + normals (computed once via a temp geom).
+  const out = [];
+  for (const bk of buckets.values()) {
+    if (!bk.pos.length) continue;
+    const positions = new Float32Array(bk.pos);
+    const indices = positions.length / 3 > 65535 ? new Uint32Array(bk.idx) : new Uint16Array(bk.idx);
+    const tmp = new THREE.BufferGeometry();
+    tmp.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    tmp.setIndex(new THREE.BufferAttribute(indices, 1));
+    tmp.computeVertexNormals();
+    const normals = tmp.getAttribute("normal").array;
+    tmp.dispose();
+    out.push({ color: bk.color, transparency: bk.transparency, positions, normals, indices });
+  }
+
+  const result = {
+    buckets: out,
+    offset,
+    box: box.isEmpty()
+      ? new THREE.Box3(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1))
+      : box,
+  };
+  if (!win) _fullGeomCache.value = result;
+  return result;
+}
+
 // --- app -------------------------------------------------------------------
 const data = new DataSource(new URLSearchParams(location.search).get("data") || "data/");
 let scale = 1 / 1000;
 let current = 0;
 let meshes = [];
-let regions = [];
+let hitSize = 4;   // hit marker size (px), set from the sidebar
 
 const main = new Panel("view-main");
-const rpanels = [new Panel("view-r0"), new Panel("view-r1"), new Panel("view-r2")];
 
 async function gotoEvent(i) {
   const n = data.nEvents;
@@ -257,9 +339,8 @@ async function gotoEvent(i) {
     return;
   }
   main.setEvent(ev, scale, null);
-  regions.forEach((rgn, k) => rpanels[k].setEvent(ev, scale, winFromRegion(rgn)));
   lastEvent = ev;
-  floats.forEach((f) => f.panel.setEvent(ev, scale, null));
+  floats.forEach((f) => f.panel.setEvent(ev, scale, f.win || null));
 
   $("evNum").textContent = String(ev.event ?? current);
   $("nHits").textContent = String((ev.hits || []).length);
@@ -281,17 +362,50 @@ window.addEventListener("keydown", (e) => {
 });
 for (const b of document.querySelectorAll("[data-cam]")) {
   b.addEventListener("click", () => {
-    main.frame(b.dataset.cam);
+    // Reorient the selected view if there is one, otherwise the main view.
+    const target = selectedView ? selectedView.panel : main;
+    target.frame(b.dataset.cam);
     document.querySelectorAll("[data-cam]").forEach((o) => o.classList.toggle("is-active", o === b));
   });
 }
-const setVis = (grp, on) => {
-  main[grp].visible = on; main.invalidate();
-  rpanels.forEach((p) => { p[grp].visible = on; p.invalidate(); });
-};
-$("tGeo").addEventListener("change", (e) => setVis("gGeo", e.target.checked));
-$("tHits").addEventListener("change", (e) => setVis("gHits", e.target.checked));
-$("tVertex").addEventListener("change", (e) => setVis("gVertex", e.target.checked));
+// toggle wiring is set up below, after the selection helpers are defined.
+
+// --- selection: one floating view can be "selected"; the Main-camera buttons
+//     then reorient it, and "Select view location" assigns it a region. -------
+let selectedView = null; // a floats[] entry, or null (=> operate on main)
+
+// The panel the sidebar controls act on: the selected view, else the main view.
+function targetPanel() { return selectedView ? selectedView.panel : main; }
+
+// Reflect a panel's options in the sidebar controls.
+function syncControls(panel) {
+  $("tGeo").checked = panel.opts.geo;
+  $("tHits").checked = panel.opts.hits;
+  $("tVertex").checked = panel.opts.vertex;
+  $("hitSize").value = String(panel.opts.hitSize);
+  $("hitSizeVal").textContent = String(panel.opts.hitSize);
+}
+
+function selectView(entry) {
+  selectedView = entry;
+  for (const f of floats) f.el.classList.toggle("is-selected", f === entry);
+  syncControls(entry ? entry.panel : main);
+}
+function clearSelectionIfGone() {
+  if (selectedView && !floats.includes(selectedView)) { selectedView = null; syncControls(main); }
+}
+
+// Show/hide toggles act on the current target panel and are stored per-panel.
+function wireToggle(id, key) {
+  $(id).addEventListener("change", (e) => {
+    const p = targetPanel();
+    p.opts[key] = e.target.checked;
+    p.applyOpts();
+  });
+}
+wireToggle("tGeo", "geo");
+wireToggle("tHits", "hits");
+wireToggle("tVertex", "vertex");
 
 // --- floating user-created views (stage 1: create / move / resize / rename /
 //     close). Each is a full-detector view for now; restricting it to a drawn
@@ -306,7 +420,13 @@ function bringToFront(el) {
   el.style.zIndex = String(z + 1);
 }
 
-function createFloatingView() {
+function createFloatingView(opts = {}) {
+  const win = opts.win || null;
+  // Inherit display options from the source panel (the one this view was
+  // created from), else the current target. This is what carries geometry/hits/
+  // vertex visibility and hit size into the new view.
+  const source = opts.source || targetPanel();
+
   const layer = $("float-layer");
   const el = document.createElement("section");
   el.className = "fpanel";
@@ -334,11 +454,19 @@ function createFloatingView() {
   layer.appendChild(el);
 
   const panel = new Panel(canvas);
-  panel.setGeometry(meshes, scale, null);   // full detector for now
+  panel.opts = { ...source.opts };                          // inherit options
+  panel.setGeometry(computeGeometry(meshes, scale, win));   // full detector, or a window
   panel.frame("3d");
-  if (lastEvent) panel.setEvent(lastEvent, scale, null);
-  const entry = { panel, el, name };
+  if (lastEvent) panel.setEvent(lastEvent, scale, win);
+  panel.applyOpts();                                        // apply inherited visibility/size
+  const entry = { panel, el, name, win };
   floats.push(entry);
+  attachPick(panel);           // allow drawing a sub-region on this view
+  selectView(entry);           // newly created view becomes the selected one
+
+  // Selecting: pressing the bar (not the close button / rename field) selects
+  // this view so the camera buttons and "Select view location" target it.
+  el.addEventListener("pointerdown", () => selectView(entry), true);
 
   // Move by dragging the title bar.
   bar.addEventListener("pointerdown", (e) => {
@@ -379,6 +507,7 @@ function createFloatingView() {
     if (i >= 0) floats.splice(i, 1);
     panel.dispose();
     el.remove();
+    clearSelectionIfGone();
   });
 
   bringToFront(el);
@@ -386,12 +515,215 @@ function createFloatingView() {
 }
 
 const newViewBtn = $("newView");
-if (newViewBtn) newViewBtn.addEventListener("click", createFloatingView);
+if (newViewBtn) newViewBtn.addEventListener("click", () => createFloatingView());
+
+// --- persistence: save / load the whole setup (views, windows, cameras,
+//     options, current event) to and from a JSON file on disk. -------------
+const SETUP_VERSION = 1;
+
+function currentSetup() {
+  return {
+    version: SETUP_VERSION,
+    // The event is intentionally NOT saved: a setup describes the view layout,
+    // which should apply to whatever event/data is currently loaded. Baking in
+    // an event index makes setups brittle across data files.
+    main: { opts: { ...main.opts }, camera: main.getCameraState() },
+    views: floats.map((f) => ({
+      name: f.name,
+      rect: {
+        left: f.el.style.left, top: f.el.style.top,
+        width: f.el.style.width, height: f.el.style.height,
+      },
+      win: f.win,
+      opts: { ...f.panel.opts },
+      camera: f.panel.getCameraState(),
+    })),
+  };
+}
+
+// Apply a camera spec that is either a preset name ("3d"/"side"/"front"/"top")
+// or a saved {pos,target,up} state.
+function applyCamera(panel, cam) {
+  if (!cam) return;
+  if (typeof cam === "string") panel.frame(cam);
+  else panel.setCameraState(cam);
+}
+
+function saveSetup() {
+  const blob = new Blob([JSON.stringify(currentSetup(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sea_cucumber_setup.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadSetup(setup) {
+  if (!setup || !Array.isArray(setup.views)) { setStatus("Not a valid setup file."); return; }
+  // Clear existing floating views.
+  for (const f of [...floats]) { f.panel.dispose(); f.el.remove(); }
+  floats.length = 0;
+  selectedView = null;
+
+  // Main view (layout only -- never the event).
+  if (setup.main) {
+    if (setup.main.opts) { main.opts = { ...main.opts, ...setup.main.opts }; main.applyOpts(); }
+    applyCamera(main, setup.main.camera);
+  }
+
+  // Recreate each floating view with its window, then restore geometry,
+  // options, position/size, and camera. The current event is kept as-is:
+  // createFloatingView seeds each new view with the event already loaded.
+  for (const v of setup.views) {
+    const entry = createFloatingView({ win: v.win || null });
+    if (v.name) {
+      entry.name = v.name;
+      const t = entry.el.querySelector(".fpanel__title");
+      if (t) t.textContent = v.name;
+    }
+    if (v.rect) {
+      if (v.rect.left) entry.el.style.left = v.rect.left;
+      if (v.rect.top) entry.el.style.top = v.rect.top;
+      if (v.rect.width) entry.el.style.width = v.rect.width;
+      if (v.rect.height) entry.el.style.height = v.rect.height;
+    }
+    if (v.opts) { entry.panel.opts = { ...entry.panel.opts, ...v.opts }; entry.panel.applyOpts(); }
+    applyCamera(entry.panel, v.camera);
+  }
+
+  selectView(null);   // deselect; sidebar targets main
+  setStatus("");
+}
+
+const saveBtn = $("saveSetup");
+if (saveBtn) saveBtn.addEventListener("click", saveSetup);
+const loadBtn = $("loadSetup");
+const loadFile = $("loadFile");
+if (loadBtn && loadFile) {
+  loadBtn.addEventListener("click", () => loadFile.click());
+  loadFile.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      loadSetup(JSON.parse(text));
+    } catch (err) {
+      setStatus(`Could not load setup:<br /><code>${err.message}</code>`);
+    }
+    loadFile.value = "";  // allow re-loading the same file
+  });
+}
+
+// Hit-size slider: update all panels' hit markers live (no event rebuild).
+// Hit-size slider: acts on the current target panel (selected view, else main).
+const hitSizeInput = $("hitSize");
+if (hitSizeInput) {
+  hitSizeInput.addEventListener("input", (e) => {
+    const px = Number(e.target.value);
+    const lbl = $("hitSizeVal");
+    if (lbl) lbl.textContent = String(px);
+    targetPanel().setHitSize(px);
+  });
+}
+
+// --- "Select view location": in pick mode, drag a rectangle on ANY view (the
+//     mother). A new child view is created showing that boxed region. The
+//     source is whichever panel you drag on -- select the mother first so you
+//     know which; dragging on the main view uses the full detector as source.
+//     We unproject the rectangle onto a plane through that panel's scene centre,
+//     take the two on-screen axes as the window, and leave the axis into the
+//     screen unconstrained -- so orient the source view (Side/Front/Top) first.
+let pickMode = false;
+const pickBtn = $("selectLoc");
+const rubber = $("rubber");
+
+function setPickMode(on) {
+  pickMode = on;
+  if (pickBtn) pickBtn.classList.toggle("is-active", on);
+  document.body.style.cursor = on ? "crosshair" : "";
+}
+if (pickBtn) pickBtn.addEventListener("click", () => setPickMode(!pickMode));
+
+// Screen rectangle on `panel`'s canvas -> axis-aligned window (mm). Accounts for
+// the panel's recentre offset, so drawing on an already-windowed view works.
+function rectToWindow(panel, x0, y0, x1, y1) {
+  const rect = panel.canvas.getBoundingClientRect();
+  const cam = panel.camera;
+  const ndc = (px, py) => new THREE.Vector2(
+    ((px - rect.left) / rect.width) * 2 - 1,
+    -(((py - rect.top) / rect.height) * 2 - 1)
+  );
+  const centre = panel.box.getCenter(new THREE.Vector3());
+  const fwd = cam.getWorldDirection(new THREE.Vector3());
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(fwd, centre);
+  const ray = new THREE.Raycaster();
+  const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const pts = [];
+  for (const [px, py] of corners) {
+    ray.setFromCamera(ndc(px, py), cam);
+    const hit = new THREE.Vector3();
+    if (ray.ray.intersectPlane(plane, hit)) pts.push(hit);
+  }
+  if (pts.length < 4) return null;
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const p of pts) for (let a = 0; a < 3; a++) {
+    lo[a] = Math.min(lo[a], p.getComponent(a));
+    hi[a] = Math.max(hi[a], p.getComponent(a));
+  }
+  const fabs = [Math.abs(fwd.x), Math.abs(fwd.y), Math.abs(fwd.z)];
+  const depthAxis = fabs.indexOf(Math.max(...fabs));
+  const off = [panel.offset.x, panel.offset.y, panel.offset.z];
+  const win = [null, null, null];
+  for (let a = 0; a < 3; a++) {
+    if (a === depthAxis) continue;
+    // panel world = mm*scale - offset  =>  mm = (world + offset)/scale
+    win[a] = [(lo[a] + off[a]) / scale, (hi[a] + off[a]) / scale];
+  }
+  return win;
+}
+
+// Attach the region-drawing behaviour to a panel's canvas. Active only in pick
+// mode; on release it creates a child view of the drawn region from THIS panel.
+function attachPick(panel) {
+  panel.canvas.addEventListener("pointerdown", (e) => {
+    if (!pickMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const x0 = e.clientX, y0 = e.clientY;
+    rubber.hidden = false;
+    const draw = (x, y) => {
+      rubber.style.left = Math.min(x0, x) + "px";
+      rubber.style.top = Math.min(y0, y) + "px";
+      rubber.style.width = Math.abs(x - x0) + "px";
+      rubber.style.height = Math.abs(y - y0) + "px";
+    };
+    draw(x0, y0);
+    const move = (ev) => draw(ev.clientX, ev.clientY);
+    const up = (ev) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      rubber.hidden = true;
+      setPickMode(false);
+      if (Math.abs(ev.clientX - x0) < 6 || Math.abs(ev.clientY - y0) < 6) return; // ignore clicks
+      const win = rectToWindow(panel, x0, y0, ev.clientX, ev.clientY);
+      if (!win) return;
+      createFloatingView({ win, source: panel });   // child view of this region
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }, true);
+}
+
+// The main view is a valid pick source too.
+attachPick(main);
+// Clicking the main view (outside pick mode) deselects any view, so the sidebar
+// controls target the main view again.
+main.canvas.addEventListener("pointerdown", () => { if (!pickMode) selectView(null); });
 
 // render loop
 function tick() {
   main.render();
-  rpanels.forEach((p) => p.render());
   floats.forEach((f) => f.panel.render());
   requestAnimationFrame(tick);
 }
@@ -401,26 +733,22 @@ function tick() {
     setStatus("Loading…");
     await data.loadManifest();
     scale = 1 / data.mmPerScene;
-    regions = data.regions.slice(0, 3);
     $("evMax").textContent = String(data.nEvents - 1);
 
-    // region panel labels from the config
-    regions.forEach((rgn, k) => { const el = $(`lbl-r${k}`); if (el && rgn.name) el.textContent = rgn.name; });
-
     meshes = await data.loadGeometry();
-    main.setGeometry(meshes, scale, null);
+    main.setGeometry(computeGeometry(meshes, scale, null));
     main.frame("3d");
     document.querySelector('[data-cam="3d"]').classList.add("is-active");
 
-    // region geometry + a camera framing per region
-    const camFor = (c) => (c === "front" || c === "xy" ? "front" : c === "top" || c === "xy0" ? "top" : "side");
-    regions.forEach((rgn, k) => {
-      const win = winFromRegion(rgn);
-      rpanels[k].setGeometry(meshes, scale, win);
-      rpanels[k].frame(camFor(rgn.camera));
-    });
-
     await gotoEvent(0);
+
+    // Auto-load the default view setup if present. Best-effort: absent or
+    // invalid file just leaves the plain main-only view.
+    try {
+      const r = await fetch("configs/sea_cucumber_default_setup.json", { cache: "no-store" });
+      if (r.ok) loadSetup(await r.json());
+    } catch (_) { /* no default setup; fine */ }
+
     setStatus("");
     tick();
   } catch (e) {
