@@ -1,0 +1,139 @@
+/*
+ * SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ * sea_cucumber frontend. Four-panel layout (sidebar | main | region column)
+ * with the SHiP outreach palette: dark-earth background, yellow detectors,
+ * pink event data, cream text.
+ */
+
+/* mononoki for the wordmark (and numeric readouts). Drop the woff2 into
+ * web/fonts/ (see web/README.md); falls back to a monospace stack if absent. */
+@font-face {
+  font-family: "Mononoki";
+  src: url("../fonts/mononoki-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --earth:   #34240f;   /* background: darker brown */
+  --earth-2: #241809;   /* deeper wells (panels, gaps) */
+  --earth-3: #45301a;   /* raised surfaces */
+  --yellow:  #e3a93c;   /* detector elements */
+  --pink:    #c64284;   /* hits (darker pink) */
+  --pink-lt: #eda9c8;   /* decay vertex (lighter pink) */
+  --cream:   #f1debc;   /* text / foreground */
+
+  --line: rgba(241, 222, 188, 0.16);
+  --ink-dim: rgba(241, 222, 188, 0.60);
+
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "Mononoki", ui-monospace, "JetBrains Mono", Menlo, monospace;
+
+  --side-w: 232px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--cream);
+  font-family: var(--ui); overflow: hidden; }
+
+/* ---- app grid: sidebar | main | regions -------------------------------- */
+.app {
+  display: grid;
+  grid-template-columns: var(--side-w) 1fr 340px;
+  gap: 6px;
+  height: 100%;
+  background: var(--earth-2);
+}
+
+/* ---- sidebar ----------------------------------------------------------- */
+.side { background: var(--earth); display: flex; flex-direction: column; padding: 16px 16px 12px;
+  overflow-y: auto; }
+
+.brand { display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 8px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.brand__logo { width: 96px; height: 96px; object-fit: contain; display: block; }
+.brand__name { font-family: var(--mono); font-size: 15px; letter-spacing: 0.02em;
+  color: var(--cream); }
+
+.ctl { margin-bottom: 20px; }
+.ctl__h { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--yellow);
+  text-transform: none; }
+
+.nav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.counter { font-family: var(--mono); font-size: 14px; color: var(--ink-dim); flex: 1;
+  text-align: center; }
+.counter span { color: var(--cream); }
+
+.readout { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+.readout dt { color: var(--ink-dim); font-size: 13px; }
+.readout dd { margin: 0; text-align: right; font-size: 13px; }
+.mono { font-family: var(--mono); }
+
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 0;
+  cursor: pointer; }
+.toggle input { accent-color: var(--pink); }
+
+.cams { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+.side__foot { margin-top: auto; padding-top: 12px; font-size: 12px; color: var(--ink-dim);
+  min-height: 1em; }
+.side__foot code { color: var(--cream); font-family: var(--mono); }
+
+/* ---- buttons ----------------------------------------------------------- */
+.btn { appearance: none; border: 1px solid var(--line); background: var(--earth-3);
+  color: var(--cream); font: inherit; font-size: 14px; line-height: 1; padding: 8px 12px;
+  border-radius: 6px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
+.btn:hover { background: #5a3f22; }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.btn--ghost { background: transparent; color: var(--ink-dim); }
+.btn--ghost:hover { background: rgba(241, 222, 188, 0.08); color: var(--cream); }
+.btn--ghost.is-active { color: var(--earth); background: var(--yellow); border-color: var(--yellow); }
+
+/* ---- panels ------------------------------------------------------------ */
+.main { position: relative; background: var(--earth); overflow: hidden; }
+.regions { display: grid; grid-template-rows: 1fr 1fr 1fr; gap: 6px; background: var(--earth-2); }
+.rpanel { position: relative; background: var(--earth); overflow: hidden; }
+
+.panel__canvas { display: block; width: 100%; height: 100%; }
+.panel__label { position: absolute; top: 8px; left: 10px; font-size: 12px; color: var(--ink-dim);
+  font-family: var(--mono); pointer-events: none; text-shadow: 0 1px 2px var(--earth-2); }
+
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* ---- wide sidebar button ------------------------------------------------ */
+.btn--wide { width: 100%; }
+
+/* ---- floating user-created views ---------------------------------------- */
+.float-layer { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+.fpanel {
+  position: absolute;
+  min-width: 180px; min-height: 140px;
+  background: var(--earth);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  resize: both;              /* native resize handle (bottom-right) */
+  pointer-events: auto;      /* re-enable inside the transparent layer */
+}
+.fpanel__bar {
+  display: flex; align-items: center; gap: 8px;
+  height: 28px; padding: 0 8px;
+  background: var(--earth-3);
+  border-bottom: 1px solid var(--line);
+  cursor: move; user-select: none;
+  flex: 0 0 auto;
+}
+.fpanel__title { font-family: var(--mono); font-size: 13px; color: var(--cream); flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fpanel__rename { font: inherit; font-family: var(--mono); font-size: 13px; flex: 1;
+  background: var(--earth-2); color: var(--cream); border: 1px solid var(--yellow);
+  border-radius: 4px; padding: 1px 4px; }
+.fpanel__close { appearance: none; border: 0; background: transparent; color: var(--ink-dim);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.fpanel__close:hover { color: var(--pink); }
+.fpanel__canvas { display: block; flex: 1 1 auto; width: 100%; height: 100%; min-height: 0; }

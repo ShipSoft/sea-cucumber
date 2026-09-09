@@ -1,0 +1,1 @@
+{"nEvents":20,"geometry":"geometry.json","unit_mm_per_scene":1000,"regions":[{"name":"Spectrometer","camera":"xz","window":{"z":[82000,96000]}},{"name":"Calorimeter","camera":"xz","window":{"z":[96000,100000]}}]}
