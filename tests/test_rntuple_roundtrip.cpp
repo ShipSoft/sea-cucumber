@@ -35,8 +35,8 @@ int main() {
     // --- write two events ----------------------------------------------------
     {
         auto model = ROOT::RNTupleModel::Create();
-        auto hits = model->MakeField<std::vector<SHiP::SimHit>>("simHits");
-        auto result = model->MakeField<SHiP::SimResult>("simResult");
+        auto hits = model->MakeField<std::vector<SHiP::SimHit>>("sim_hits");
+        auto result = model->MakeField<SHiP::SimResult>("sim_result");
 
         auto writer = ROOT::RNTupleWriter::Recreate(std::move(model), "events", path);
 

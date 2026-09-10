@@ -32,8 +32,8 @@
 #include <cstddef>
 #include <cstdio>
 #include <fstream>
-#include <memory>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -52,21 +52,29 @@ std::string jsonEscape(const std::string& s) {
     o.reserve(s.size() + 8);
     for (char c : s) {
         switch (c) {
-            case '"': o += "\\\""; break;
-            case '\\': o += "\\\\"; break;
-            case '\n': o += "\\n"; break;
-            case '\t': o += "\\t"; break;
-            default: o += c;
+            case '"':
+                o += "\\\"";
+                break;
+            case '\\':
+                o += "\\\\";
+                break;
+            case '\n':
+                o += "\\n";
+                break;
+            case '\t':
+                o += "\\t";
+                break;
+            default:
+                o += c;
         }
     }
     return o;
 }
 
-
 // Tessellate one shape and append its world-frame mesh to `out` as a JSON
 // object. Returns false if the shape yielded no triangles.
-bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape,
-               const TGeoHMatrix& g, const std::string& colorHex, int transparency, bool first) {
+bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape, const TGeoHMatrix& g,
+               const std::string& colorHex, int transparency, bool first) {
     if (!shape) return false;
 
     // Use MakeBuffer3D(), NOT GetBuffer3D(): the latter fills a shared static
@@ -130,8 +138,10 @@ bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape,
             for (std::size_t e = 0; e < edges.size(); ++e) {
                 if (used[e]) continue;
                 int nxt = -1;
-                if (edges[e].first == cur) nxt = edges[e].second;
-                else if (edges[e].second == cur) nxt = edges[e].first;
+                if (edges[e].first == cur)
+                    nxt = edges[e].second;
+                else if (edges[e].second == cur)
+                    nxt = edges[e].first;
                 if (nxt >= 0) {
                     used[e] = 1;
                     cur = nxt;
@@ -139,8 +149,8 @@ bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape,
                     break;
                 }
             }
-            if (!found) break;                  // open/broken polygon; stop
-            if (cur == loop.front()) break;     // closed the loop
+            if (!found) break;               // open/broken polygon; stop
+            if (cur == loop.front()) break;  // closed the loop
             loop.push_back(cur);
         }
 
@@ -175,18 +185,25 @@ bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape,
 
 int main(int argc, char* argv[]) {
     std::string geometry, dataFile, viewFile, outDir = "web/data", eventsArg = "all";
-    int webDepth = 4;              // deeper than the envelope pass
+    int webDepth = 4;                  // deeper than the envelope pass
     std::size_t webMaxShapes = 20000;  // keep geometry.json a sane size
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
-        if (a == "--geometry") geometry = nxt();
-        else if (a == "--data") dataFile = nxt();
-        else if (a == "--view") viewFile = nxt();
-        else if (a == "--out") outDir = nxt();
-        else if (a == "--events") eventsArg = nxt();
-        else if (a == "--depth") webDepth = std::stoi(nxt());
-        else if (a == "--max-shapes") webMaxShapes = static_cast<std::size_t>(std::stoll(nxt()));
+        if (a == "--geometry")
+            geometry = nxt();
+        else if (a == "--data")
+            dataFile = nxt();
+        else if (a == "--view")
+            viewFile = nxt();
+        else if (a == "--out")
+            outDir = nxt();
+        else if (a == "--events")
+            eventsArg = nxt();
+        else if (a == "--depth")
+            webDepth = std::stoi(nxt());
+        else if (a == "--max-shapes")
+            webMaxShapes = static_cast<std::size_t>(std::stoll(nxt()));
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
                          "[--view v.toml] [--out web/data] [--events all|<i>] "
@@ -220,6 +237,8 @@ int main(int argc, char* argv[]) {
         std::system(("mkdir -p '" + webRoot + "/configs' && cp -f configs/*.json '" + webRoot +
                      "/configs/' 2>/dev/null")
                         .c_str());
+        // Keep the served VERSION in sync with the repo's.
+        std::system(("cp -f VERSION '" + webRoot + "/VERSION' 2>/dev/null").c_str());
     }
     std::string mk = "mkdir -p '" + outDir + "'";
     if (std::system(mk.c_str()) != 0) {
@@ -253,7 +272,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     gj << "{\"meshes\":[\n";
-    std::size_t nMesh = 0, nEmpty = 0;
+    std::size_t nMesh = 0, nSkipped = 0;
     bool firstMesh = true;
     try {
         shipdisp::GeoModelGeometrySource src(geometry, opt);
@@ -263,14 +282,16 @@ int main(int argc, char* argv[]) {
             // blue-dominant (six blues) with a cream and a muted purple worked
             // in for variety, and deliberately excludes the bright hit pink
             // (#C64284) so hits stay clearly visible against the geometry.
-            static const char* kPalette[] = {
-                "#0A1F44", "#12305F", "#20428A", "#3A6BBF", "#6E97D6", "#A9C4E8",
-                "#E8CFA0", "#7A6A9E"};
+            static const char* kPalette[] = {"#0A1F44", "#12305F", "#20428A", "#3A6BBF",
+                                             "#6E97D6", "#A9C4E8", "#E8CFA0", "#7A6A9E"};
             const std::string matched = view.colorForVolume(name);
             std::string color = matched;
             if (matched == view.geometry.default_color) {
                 std::size_t h = 1469598103934665603ull;  // FNV-1a over the name
-                for (char c : name) { h ^= static_cast<unsigned char>(c); h *= 1099511628211ull; }
+                for (char c : name) {
+                    h ^= static_cast<unsigned char>(c);
+                    h *= 1099511628211ull;
+                }
                 color = kPalette[h % (sizeof(kPalette) / sizeof(kPalette[0]))];
             }
             const int transp = view.transparencyForVolume(name);
@@ -278,7 +299,7 @@ int main(int argc, char* argv[]) {
                 firstMesh = false;
                 ++nMesh;
             } else {
-                ++nEmpty;
+                ++nSkipped;
             }
             delete shape;  // emit contract transfers ownership to us here
         });
@@ -288,7 +309,7 @@ int main(int argc, char* argv[]) {
     }
     gj << "\n]}\n";
     gj.close();
-    std::cout << "[make_web_data] geometry.json: " << nMesh << " meshes (" << nEmpty
+    std::cout << "[make_web_data] geometry.json: " << nMesh << " meshes (" << nSkipped
               << " empty/skipped)\n";
 
     // --- events -------------------------------------------------------------

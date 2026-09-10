@@ -28,12 +28,12 @@
 #include <ROOT/REveTrans.hxx>
 #include <ROOT/REveViewer.hxx>
 
+#include <Rtypes.h>
 #include <TApplication.h>
 #include <TColor.h>
 #include <TGeoBBox.h>
 #include <TGeoMatrix.h>
 #include <TGeoShape.h>
-#include <Rtypes.h>
 
 #include <algorithm>
 #include <array>
@@ -157,8 +157,8 @@ class EventDisplay {
             v->AddScene(r.eventScene);
             v->SetCameraType(cameraFor(r.cfg.camera));
             v->SetBlackBackground(true);
-            std::cout << "[sea_cucumber] viewer '" << r.cfg.name << "': camera \""
-                      << r.cfg.camera << "\" -> " << cameraDesc(r.cfg.camera) << "\n";
+            std::cout << "[sea_cucumber] viewer '" << r.cfg.name << "': camera \"" << r.cfg.camera
+                      << "\" -> " << cameraDesc(r.cfg.camera) << "\n";
         }
     }
 
@@ -203,8 +203,8 @@ class EventDisplay {
                 r.lo[ax] = r.cfg.wmin[ax];
                 r.hi[ax] = r.cfg.wmax[ax];
                 desc += std::string(desc.empty() ? "" : ", ") + kAx[ax] + " [" +
-                        std::to_string(static_cast<long long>(r.lo[ax])) + ", " +
-                        std::to_string(static_cast<long long>(r.hi[ax])) + "]";
+                        std::to_string(static_cast<std::int64_t>(r.lo[ax])) + ", " +
+                        std::to_string(static_cast<std::int64_t>(r.hi[ax])) + "]";
             }
             if (!desc.empty()) {
                 r.resolved = true;
@@ -247,13 +247,13 @@ class EventDisplay {
         std::vector<double> lo(regions_.size(), 1e30), hi(regions_.size(), -1e30);
         std::vector<std::size_t> nmatch(regions_.size(), 0);
         std::vector<std::regex> res(regions_.size());
-        std::vector<bool> useRe(regions_.size(), false);
+        std::vector<bool> useRgx(regions_.size(), false);
         for (std::size_t k = 0; k < regions_.size(); ++k) {
             const auto& c = regions_[k].cfg;
             if (c.hasAnyWindow() || c.match.empty()) continue;
             try {
                 res[k] = std::regex(c.match, std::regex::ECMAScript | std::regex::icase);
-                useRe[k] = true;
+                useRgx[k] = true;
             } catch (const std::regex_error& e) {
                 std::cerr << "[sea_cucumber] region '" << c.name << "': bad match regex ("
                           << e.what() << ")\n";
@@ -264,7 +264,7 @@ class EventDisplay {
             double dz = 0.0;
             if (const auto* bb = dynamic_cast<const TGeoBBox*>(shape)) dz = bb->GetDZ() / scale_;
             for (std::size_t k = 0; k < regions_.size(); ++k) {
-                if (useRe[k] && std::regex_search(name, res[k])) {
+                if (useRgx[k] && std::regex_search(name, res[k])) {
                     lo[k] = std::min(lo[k], z - dz);
                     hi[k] = std::max(hi[k], z + dz);
                     ++nmatch[k];
@@ -286,7 +286,7 @@ class EventDisplay {
         std::vector<double> lo(regions_.size(), 1e30), hi(regions_.size(), -1e30);
         std::vector<std::size_t> nmatch(regions_.size(), 0);
         std::vector<std::regex> res(regions_.size());
-        std::vector<bool> useRe(regions_.size(), false);
+        std::vector<bool> useRgx(regions_.size(), false);
 
         if (needScan) {
             for (std::size_t k = 0; k < regions_.size(); ++k) {
@@ -294,7 +294,7 @@ class EventDisplay {
                 if (c.hasAnyWindow() || c.match.empty()) continue;
                 try {
                     res[k] = std::regex(c.match, std::regex::ECMAScript | std::regex::icase);
-                    useRe[k] = true;
+                    useRgx[k] = true;
                 } catch (const std::regex_error& e) {
                     std::cerr << "[sea_cucumber] region '" << c.name << "': bad match regex ("
                               << e.what() << ")\n";
@@ -326,7 +326,7 @@ class EventDisplay {
                     // covers the whole subsystem, not just its origin.
                     const double half = (dz >= 0.0) ? dz : 0.0;
                     for (std::size_t k = 0; k < regions_.size(); ++k) {
-                        if (!useRe[k]) continue;
+                        if (!useRgx[k]) continue;
                         if (std::regex_search(name, res[k])) {
                             lo[k] = std::min(lo[k], z - half);
                             hi[k] = std::max(hi[k], z + half);
@@ -350,8 +350,8 @@ class EventDisplay {
             TGeoShape* shape;
             TGeoHMatrix m;
             std::string name;
-            double c[3];   // centre (x, y, z), mm
-            double d[3];   // half-extents, mm (0 if unknown)
+            double c[3];  // centre (x, y, z), mm
+            double d[3];  // half-extents, mm (0 if unknown)
             bool used;
         };
         std::vector<Rec> recs;
@@ -484,7 +484,8 @@ class EventDisplay {
             for (auto* rec : keep) {
                 // A shape can only be owned by one REveGeoShape; clone if a
                 // previous region already took it (windows may overlap).
-                TGeoShape* sh = rec->used ? static_cast<TGeoShape*>(rec->shape->Clone()) : rec->shape;
+                TGeoShape* sh =
+                    rec->used ? static_cast<TGeoShape*>(rec->shape->Clone()) : rec->shape;
                 rec->used = true;
                 auto* d = new REX::REveGeoShape(rec->name.c_str());
                 d->SetShape(sh);
@@ -541,10 +542,9 @@ class EventDisplay {
             }
             std::cout << "[sea_cucumber] region '" << r.cfg.name << "': " << keep.size()
                       << " shapes (rejected " << rejectedBig << " oversized, " << rejectedName
-                      << " by name, dropped " << dropped
-                      << " over budget " << r.cfg.max_shapes << "), centred by ("
-                      << r.ox / scale_ << ", " << r.oy / scale_ << ", " << r.oz / scale_
-                      << ") mm\n";
+                      << " by name, dropped " << dropped << " over budget " << r.cfg.max_shapes
+                      << "), centred by (" << r.ox / scale_ << ", " << r.oy / scale_ << ", "
+                      << r.oz / scale_ << ") mm\n";
         }
 
         // Free anything no region took ownership of.
@@ -587,7 +587,7 @@ class EventDisplay {
     void addNavigator() {
         auto* nav = new EventNavigator("EventNavigator");
         eve_->GetWorld()->AddElement(nav);
-        nav->Configure([this](long long i) { this->gotoEvent(i); }, numEvents(), current_);
+        nav->Configure([this](std::int64_t i) { this->gotoEvent(i); }, numEvents(), current_);
         std::cout << "[sea_cucumber] event navigator ready -- right-click "
                      "'EventNavigator' in the browser tree for Next / Previous / GotoEvent\n";
     }
@@ -642,11 +642,10 @@ class EventDisplay {
         auto makeBins = [&](REX::REveElement* holder, const char* tag, float baseSize) {
             std::array<REX::REvePointSet*, kBins> bins{};
             for (int b = 0; b < kBins; ++b) {
-                const float size =
-                    baseSize *
-                    (1.0f + 1.8f * (view_.hits.color_by_energy ? b : 0) / std::max(1, kBins - 1));
-                auto* ps = new REX::REvePointSet(
-                    (std::string("hits_") + tag + std::to_string(b)).c_str());
+                const float size = baseSize * (1.0f + 1.8f * (view_.hits.color_by_energy ? b : 0) /
+                                                          std::max(1, kBins - 1));
+                auto* ps =
+                    new REX::REvePointSet((std::string("hits_") + tag + std::to_string(b)).c_str());
                 ps->SetMarkerStyle(view_.hits.marker_style);
                 ps->SetMarkerSize(size);
                 ps->SetMarkerColor(pink);
@@ -661,8 +660,8 @@ class EventDisplay {
         regionBins.reserve(regions_.size());
         for (auto& r : regions_) {
             // Per-view marker size, falling back to the global one.
-            const float sz = (r.cfg.hit_marker_size >= 0.0f) ? r.cfg.hit_marker_size
-                                                             : view_.hits.marker_size;
+            const float sz =
+                (r.cfg.hit_marker_size >= 0.0f) ? r.cfg.hit_marker_size : view_.hits.marker_size;
             regionBins.push_back(makeBins(r.eventHolder, r.cfg.name.c_str(), sz));
         }
 
@@ -736,8 +735,9 @@ class EventDisplay {
                         inAll = false;
                     }
                 }
-                if (!inAll) continue;  // outside this view; drawing it would
-                                       // stretch the camera fit and undo the zoom
+                if (!inAll)
+                    continue;  // outside this view; drawing it would
+                               // stretch the camera fit and undo the zoom
             }
             const float size = (r.cfg.decay_marker_size >= 0.0f) ? r.cfg.decay_marker_size
                                                                  : view_.decay.marker_size;
@@ -765,7 +765,8 @@ void usage(const char* a0) {
     std::cerr << "Usage: " << a0
               << " --geometry <ship.db> --data <events.root> [--view <view.toml>]\n"
                  "               [--ntuple <name>] [--event <i>] [--scale <f>] [--logo <dir>]\n"
-                 "               [--geo-cache <prefix>]  use/require cached geometry (see make_geometry_cache)\n"
+                 "               [--geo-cache <prefix>]  use/require cached geometry (see "
+                 "make_geometry_cache)\n"
                  "               [--inspect [depth]] [--inspect-match <pat>] [--inspect-all]\n"
                  "                     list the geometry's volumes (name, count, z span) and "
                  "exit;\n"
@@ -777,10 +778,10 @@ int main(int argc, char* argv[]) {
     std::string geometry, data, viewFile, ntuple, geoCache;
     std::int64_t event = 0;
     double scaleOverride = -1.0;
-    int inspectDepth = -1;  // >=0 => print a geometry inventory and exit
-    std::string inspectMatch;  // optional name filter for --inspect
+    int inspectDepth = -1;         // >=0 => print a geometry inventory and exit
+    std::string inspectMatch;      // optional name filter for --inspect
     std::string logoDir = "logo";  // served at /sea_cucumber_logo/
-    bool inspectAll = false;   // list every instance instead of aggregating
+    bool inspectAll = false;       // list every instance instead of aggregating
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* n) -> std::string {
@@ -880,8 +881,8 @@ int main(int argc, char* argv[]) {
                 if (inspectAll) rows.push_back({n, z, dz, d});
             });
 
-        std::cout << "\n=== geometry inventory: " << dbPath << " (depth <= " << inspectDepth
-                  << ", " << visited << " volumes visited";
+        std::cout << "\n=== geometry inventory: " << dbPath << " (depth <= " << inspectDepth << ", "
+                  << visited << " volumes visited";
         if (useFilter) std::cout << ", filter \"" << inspectMatch << "\"";
         std::cout << ") ===\n"
                   << "  copy a name (or a wildcard over it) into a region's `exclude` to hide "
@@ -905,9 +906,8 @@ int main(int argc, char* argv[]) {
             // Aggregated: one row per distinct NAME, which is what you actually
             // need in order to write an `exclude` pattern.
             std::vector<std::pair<std::string, Agg>> list(agg.begin(), agg.end());
-            std::sort(list.begin(), list.end(), [](const auto& a, const auto& b) {
-                return a.second.zlo < b.second.zlo;
-            });
+            std::sort(list.begin(), list.end(),
+                      [](const auto& a, const auto& b) { return a.second.zlo < b.second.zlo; });
             std::printf("%-56s %8s %5s %12s %12s\n", "volume name", "count", "depth", "z min",
                         "z max");
             for (const auto& [name, a] : list) {
@@ -991,8 +991,7 @@ int main(int argc, char* argv[]) {
                 regionOpt.z_window_min = uLo - pad;
                 regionOpt.z_window_max = uHi + pad;
                 std::cout << "[sea_cucumber] region walk restricted to z ["
-                          << regionOpt.z_window_min << ", " << regionOpt.z_window_max
-                          << "] mm\n";
+                          << regionOpt.z_window_min << ", " << regionOpt.z_window_max << "] mm\n";
             }
             shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
             ed.loadRegionGeometry(regionSrc);

@@ -28,9 +28,12 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
-        if (a == "--geometry") geometry = nxt();
-        else if (a == "--view") viewFile = nxt();
-        else if (a == "--out-prefix") outPrefix = nxt();
+        if (a == "--geometry")
+            geometry = nxt();
+        else if (a == "--view")
+            viewFile = nxt();
+        else if (a == "--out-prefix")
+            outPrefix = nxt();
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_geometry_cache --geometry ship.db "
                          "[--view v.toml] [--out-prefix geocache]\n";
@@ -69,9 +72,9 @@ int main(int argc, char* argv[]) {
                                      "main envelope pass of " + geometry);
 
         shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
-        shipdisp::WriteGeometryCache(regionSrc, outPrefix + ".region.root",
-                                     "region deep pass (depth " +
-                                         std::to_string(regionOpt.max_depth) + ") of " + geometry);
+        shipdisp::WriteGeometryCache(
+            regionSrc, outPrefix + ".region.root",
+            "region deep pass (depth " + std::to_string(regionOpt.max_depth) + ") of " + geometry);
     } catch (const std::exception& e) {
         std::cerr << "[make_geometry_cache] failed: " << e.what() << "\n";
         return 1;

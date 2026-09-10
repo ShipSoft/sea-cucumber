@@ -4,3 +4,28 @@ version = 1
 path = ["pixi.lock", "LICENSE.md", "CPPLINT.cfg"]
 SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
 SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = ["configs/**", "web/configs/**"]
+SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = ["VERSION", "web/VERSION"]
+SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = [".gitignore"]
+SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = ["logo/**"]
+SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
+SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = ["web/data/**", "web/logo/**"]
+SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
+SPDX-License-Identifier = "LGPL-3.0-or-later"

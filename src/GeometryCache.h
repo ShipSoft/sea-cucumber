@@ -37,7 +37,7 @@
 #include <cstddef>
 #include <string>
 
-#include "GeoModelLoader.h"     // GeoEmit
+#include "GeoModelLoader.h"  // GeoEmit
 #include "IGeometrySource.h"
 
 namespace shipdisp {
@@ -57,8 +57,7 @@ std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path
 // to construct; the file is read lazily in provide().
 class CachedGeometrySource : public IGeometrySource {
    public:
-    explicit CachedGeometrySource(std::string cache_path)
-        : path_(std::move(cache_path)) {}
+    explicit CachedGeometrySource(std::string cache_path) : path_(std::move(cache_path)) {}
 
     std::size_t provide(const GeoEmit& emit) override;
 

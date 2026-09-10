@@ -59,8 +59,8 @@ int main() {
     shipdisp::CachedGeometrySource cache(path);
     std::vector<std::string> names;
     std::vector<double> zs, dzs;
-    const std::size_t n = cache.provide(
-        [&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
+    const std::size_t n =
+        cache.provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
             names.push_back(name);
             zs.push_back(g.GetTranslation()[2]);
             if (const auto* bb = dynamic_cast<const TGeoBBox*>(shape)) dzs.push_back(bb->GetDZ());

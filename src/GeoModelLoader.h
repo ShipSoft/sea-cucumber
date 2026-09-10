@@ -155,8 +155,7 @@ std::regex CompileNamePattern(const std::string& pattern, bool icase = true);
 // NOT descend into a volume it has already reported, which is what you want
 // when locating a subsystem envelope (its interior can hold ~100k volumes).
 // `dz_mm` is the world-frame z half-extent, or -1 when it can't be measured.
-using GeoScan =
-    std::function<void(const std::string& name, double z_mm, double dz_mm, int depth)>;
+using GeoScan = std::function<void(const std::string& name, double z_mm, double dz_mm, int depth)>;
 
 std::size_t ScanGeoModelDB(const std::string& db_path, const GeoLoadOptions& opt,
                            const GeoScan& scan);

@@ -59,10 +59,22 @@ std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path
         depth = d;
         const Double_t* r = g.GetRotationMatrix();
         const Double_t* t = g.GetTranslation();
-        xform[0] = r[0]; xform[1] = r[1]; xform[2] = r[2]; xform[3] = t[0];
-        xform[4] = r[3]; xform[5] = r[4]; xform[6] = r[5]; xform[7] = t[1];
-        xform[8] = r[6]; xform[9] = r[7]; xform[10] = r[8]; xform[11] = t[2];
-        xform[12] = 0; xform[13] = 0; xform[14] = 0; xform[15] = 1;
+        xform[0] = r[0];
+        xform[1] = r[1];
+        xform[2] = r[2];
+        xform[3] = t[0];
+        xform[4] = r[3];
+        xform[5] = r[4];
+        xform[6] = r[5];
+        xform[7] = t[1];
+        xform[8] = r[6];
+        xform[9] = r[7];
+        xform[10] = r[8];
+        xform[11] = t[2];
+        xform[12] = 0;
+        xform[13] = 0;
+        xform[14] = 0;
+        xform[15] = 1;
 
         // Wrap the shape in a concrete volume so ROOT can persist it (a bare
         // TGeoShape* branch can't be read back -- the base class is abstract).

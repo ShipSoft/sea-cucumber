@@ -22,8 +22,8 @@
 //    root -l -b -q 'tools/dump_hit_z.C("files/llp_display.root", 16)'
 // =============================================================================
 
-#include <ROOT/RNTupleReader.hxx>
 #include <TSystem.h>
+#include <ROOT/RNTupleReader.hxx>
 
 #include <algorithm>
 #include <cstdio>
@@ -52,8 +52,7 @@ std::vector<double> componentForEvent(ROOT::RNTupleReader& reader, const std::st
 
 }  // namespace
 
-void dump_hit_z(const char* file, unsigned long long event = 0,
-                const char* ntuple = "events") {
+void dump_hit_z(const char* file, unsigned long long event = 0, const char* ntuple = "events") {
     if (gSystem->AccessPathName(file)) {
         std::cerr << "dump_hit_z: cannot find file '" << file << "'\n";
         return;
@@ -62,8 +61,8 @@ void dump_hit_z(const char* file, unsigned long long event = 0,
     try {
         reader = ROOT::RNTupleReader::Open(ntuple, file);
     } catch (const std::exception& e) {
-        std::cerr << "dump_hit_z: cannot open '" << ntuple << "' in '" << file << "': "
-                  << e.what() << "\n";
+        std::cerr << "dump_hit_z: cannot open '" << ntuple << "' in '" << file << "': " << e.what()
+                  << "\n";
         return;
     }
 
@@ -71,8 +70,7 @@ void dump_hit_z(const char* file, unsigned long long event = 0,
     std::cout << "dump_hit_z: '" << file << "' ntuple '" << ntuple << "' has " << nEntries
               << " events\n";
     if (event >= nEntries) {
-        std::cerr << "dump_hit_z: event " << event << " out of range [0, " << nEntries - 1
-                  << "]\n";
+        std::cerr << "dump_hit_z: event " << event << " out of range [0, " << nEntries - 1 << "]\n";
         return;
     }
 
@@ -112,16 +110,19 @@ void dump_hit_z(const char* file, unsigned long long event = 0,
     double xmin = 1e30, xmax = -1e30, ymin = 1e30, ymax = -1e30;
     for (std::size_t i = 0; i < n; ++i) {
         std::printf("%6zu %14.2f %14.2f %14.2f\n", i, X[i], Y[i], Z[i]);
-        zmin = std::min(zmin, Z[i]); zmax = std::max(zmax, Z[i]); zsum += Z[i];
-        xmin = std::min(xmin, X[i]); xmax = std::max(xmax, X[i]);
-        ymin = std::min(ymin, Y[i]); ymax = std::max(ymax, Y[i]);
+        zmin = std::min(zmin, Z[i]);
+        zmax = std::max(zmax, Z[i]);
+        zsum += Z[i];
+        xmin = std::min(xmin, X[i]);
+        xmax = std::max(xmax, X[i]);
+        ymin = std::min(ymin, Y[i]);
+        ymax = std::max(ymax, Y[i]);
     }
 
     std::cout << "\nsummary (mm):\n";
     std::printf("  x range [%.1f, %.1f]\n", xmin, xmax);
     std::printf("  y range [%.1f, %.1f]\n", ymin, ymax);
-    std::printf("  z range [%.1f, %.1f]  mean z %.1f\n", zmin, zmax,
-                zsum / static_cast<double>(n));
+    std::printf("  z range [%.1f, %.1f]  mean z %.1f\n", zmin, zmax, zsum / static_cast<double>(n));
     std::cout << "\ncompare z against the --inspect detector span and against the markers "
                  "on screen.\n";
 }

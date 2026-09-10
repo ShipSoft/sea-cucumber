@@ -126,9 +126,7 @@ struct RegionView {
     double offset_z = 0.0;
 
     /// True when at least one axis window is set explicitly.
-    bool hasAnyWindow() const {
-        return has_window[0] || has_window[1] || has_window[2];
-    }
+    bool hasAnyWindow() const { return has_window[0] || has_window[1] || has_window[2]; }
 };
 
 struct ViewConfig {

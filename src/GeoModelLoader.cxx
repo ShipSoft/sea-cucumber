@@ -60,12 +60,12 @@
 #include <TGeoTrd2.h>
 #include <TGeoTube.h>
 
-#include <atomic>
-#include <cmath>
 #include <algorithm>
 #include <any>
-#include <map>
+#include <atomic>
+#include <cmath>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <regex>
 #include <stdexcept>
@@ -120,7 +120,6 @@ void warnUnsupported(const GeoShape* s) {
               << "' -- skipped (add a case in convertShape())\n";
 }
 
-
 // -----------------------------------------------------------------------------
 //  Cheap half-extents of a GeoModel shape, WITHOUT converting it to a
 //  TGeoShape. Shape conversion is the dominant cost of a walk, so being able to
@@ -133,19 +132,24 @@ void warnUnsupported(const GeoShape* s) {
 bool halfExtents(const GeoShape* s, double& dx, double& dy, double& dz) {
     if (!s) return false;
     if (const auto* b = dynamic_cast<const GeoBox*>(s)) {
-        dx = b->getXHalfLength(); dy = b->getYHalfLength(); dz = b->getZHalfLength();
+        dx = b->getXHalfLength();
+        dy = b->getYHalfLength();
+        dz = b->getZHalfLength();
         return true;
     }
     if (const auto* t = dynamic_cast<const GeoTube*>(s)) {
-        dx = dy = t->getRMax(); dz = t->getZHalfLength();
+        dx = dy = t->getRMax();
+        dz = t->getZHalfLength();
         return true;
     }
     if (const auto* t = dynamic_cast<const GeoTubs*>(s)) {
-        dx = dy = t->getRMax(); dz = t->getZHalfLength();
+        dx = dy = t->getRMax();
+        dz = t->getZHalfLength();
         return true;
     }
     if (const auto* c = dynamic_cast<const GeoCons*>(s)) {
-        dx = dy = std::max(c->getRMax1(), c->getRMax2()); dz = c->getDZ();
+        dx = dy = std::max(c->getRMax1(), c->getRMax2());
+        dz = c->getDZ();
         return true;
     }
     if (const auto* t = dynamic_cast<const GeoTrd*>(s)) {
@@ -161,11 +165,15 @@ bool halfExtents(const GeoShape* s, double& dx, double& dy, double& dz) {
         return true;
     }
     if (const auto* p = dynamic_cast<const GeoPara*>(s)) {
-        dx = p->getXHalfLength(); dy = p->getYHalfLength(); dz = p->getZHalfLength();
+        dx = p->getXHalfLength();
+        dy = p->getYHalfLength();
+        dz = p->getZHalfLength();
         return true;
     }
     if (const auto* e = dynamic_cast<const GeoEllipticalTube*>(s)) {
-        dx = e->getXHalfLength(); dy = e->getYHalfLength(); dz = e->getZHalfLength();
+        dx = e->getXHalfLength();
+        dy = e->getYHalfLength();
+        dz = e->getZHalfLength();
         return true;
     }
     if (const auto* p = dynamic_cast<const GeoPcon*>(s)) {
@@ -176,7 +184,8 @@ bool halfExtents(const GeoShape* s, double& dx, double& dy, double& dz) {
             zhi = std::max(zhi, p->getZPlane(i));
         }
         if (zhi < zlo) return false;
-        dx = dy = r; dz = 0.5 * (zhi - zlo);
+        dx = dy = r;
+        dz = 0.5 * (zhi - zlo);
         return true;
     }
     if (const auto* p = dynamic_cast<const GeoPgon*>(s)) {
@@ -187,11 +196,13 @@ bool halfExtents(const GeoShape* s, double& dx, double& dy, double& dz) {
             zhi = std::max(zhi, p->getZPlane(i));
         }
         if (zhi < zlo) return false;
-        dx = dy = r; dz = 0.5 * (zhi - zlo);
+        dx = dy = r;
+        dz = 0.5 * (zhi - zlo);
         return true;
     }
     if (const auto* t = dynamic_cast<const GeoTorus*>(s)) {
-        dx = dy = t->getRTor() + t->getRMax(); dz = t->getRMax();
+        dx = dy = t->getRTor() + t->getRMax();
+        dz = t->getRMax();
         return true;
     }
     // Booleans: bound by the operands (over-estimate is fine, never prunes
@@ -199,14 +210,18 @@ bool halfExtents(const GeoShape* s, double& dx, double& dy, double& dz) {
     if (const auto* sh = dynamic_cast<const GeoShapeShift*>(s)) {
         if (!halfExtents(sh->getOp(), dx, dy, dz)) return false;
         const auto t = sh->getX().translation();
-        dx += std::abs(t.x()); dy += std::abs(t.y()); dz += std::abs(t.z());
+        dx += std::abs(t.x());
+        dy += std::abs(t.y());
+        dz += std::abs(t.z());
         return true;
     }
     if (const auto* u = dynamic_cast<const GeoShapeUnion*>(s)) {
         double ax, ay, az, bx, by, bz;
         if (!halfExtents(u->getOpA(), ax, ay, az)) return false;
         if (!halfExtents(u->getOpB(), bx, by, bz)) return false;
-        dx = std::max(ax, bx); dy = std::max(ay, by); dz = std::max(az, bz);
+        dx = std::max(ax, bx);
+        dy = std::max(ay, by);
+        dz = std::max(az, bz);
         return true;
     }
     if (const auto* d = dynamic_cast<const GeoShapeSubtraction*>(s)) {
@@ -216,7 +231,9 @@ bool halfExtents(const GeoShape* s, double& dx, double& dy, double& dz) {
         double ax, ay, az, bx, by, bz;
         if (!halfExtents(i->getOpA(), ax, ay, az)) return false;
         if (!halfExtents(i->getOpB(), bx, by, bz)) return false;
-        dx = std::min(ax, bx); dy = std::min(ay, by); dz = std::min(az, bz);
+        dx = std::min(ax, bx);
+        dy = std::min(ay, by);
+        dz = std::min(az, bz);
         return true;
     }
     return false;
@@ -418,8 +435,7 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
             // subtree. This is what stops us walking the whole muon shield to
             // reach the spectrometer. If the shape can't be measured we do not
             // prune (safe direction).
-            const double dz =
-                lv ? zHalfExtentWorld(lv->getShape(), childToWorld) : -1.0;
+            const double dz = lv ? zHalfExtentWorld(lv->getShape(), childToWorld) : -1.0;
             if (dz >= 0.0) {
                 if (zc + dz < st.opt.z_window_min || zc - dz > st.opt.z_window_max) {
                     ++st.pruned;
@@ -444,7 +460,6 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
                 global.Multiply(&shift);  // fold any top-level Shift in
                 st.emit(name + "#" + std::to_string(i), shape, global, depth);
                 ++st.emitted;
-
             }
             if (st.opt.stop_at_match) continue;  // envelope: don't descend
         }
@@ -547,7 +562,6 @@ void scanWalk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, 
 
 }  // namespace
 
-
 std::regex CompileNamePattern(const std::string& pattern, bool icase) {
     const auto flags =
         icase ? (std::regex::ECMAScript | std::regex::icase) : std::regex::ECMAScript;
@@ -559,14 +573,29 @@ std::regex CompileNamePattern(const std::string& pattern, bool icase) {
         re.reserve(pattern.size() * 2);
         for (const char ch : pattern) {
             switch (ch) {
-                case '*': re += ".*"; break;
-                case '?': re += '.'; break;
-                case '.': case '+': case '(': case ')': case '[': case ']':
-                case '{': case '}': case '^': case '$': case '|': case '\\':
+                case '*':
+                    re += ".*";
+                    break;
+                case '?':
+                    re += '.';
+                    break;
+                case '.':
+                case '+':
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '{':
+                case '}':
+                case '^':
+                case '$':
+                case '|':
+                case '\\':
                     re += '\\';
                     re += ch;
                     break;
-                default: re += ch;
+                default:
+                    re += ch;
             }
         }
         try {

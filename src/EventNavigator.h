@@ -22,6 +22,7 @@
 
 #include <ROOT/REveElement.hxx>
 
+#include <cstdint>
 #include <functional>
 #include <string>
 
@@ -43,16 +44,17 @@ class EventNavigator : public ROOT::Experimental::REveElement {
     /// @param go        called with the event index to display
     /// @param nEvents   number of events in the file
     /// @param current   index currently shown
-    void Configure(std::function<void(long long)> go, long long nEvents, long long current);
+    void Configure(std::function<void(std::int64_t)> go, std::int64_t nEvents,
+                   std::int64_t current);
 
    private:
-    void Show(long long index);
+    void Show(std::int64_t index);
 
     // All transient (//!): never streamed, so the dictionary need not know how
     // to serialise a std::function.
-    std::function<void(long long)> fGo;  //!
-    long long fNum = 0;                  //!
-    long long fCurrent = 0;              //!
+    std::function<void(std::int64_t)> fGo;  //!
+    std::int64_t fNum = 0;                  //!
+    std::int64_t fCurrent = 0;              //!
 
     ClassDef(EventNavigator, 1);  // ROOT dictionary macro
 };
