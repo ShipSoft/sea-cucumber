@@ -136,14 +136,12 @@ struct RegionView {
     double offset_z = 0.0;
 
     /// True when at least one axis window is set explicitly.
-    bool hasAnyWindow() const {
-        return has_window[0] || has_window[1] || has_window[2];
-    }
+    bool hasAnyWindow() const { return has_window[0] || has_window[1] || has_window[2]; }
 };
 
 struct ViewConfig {
-    double hit_scale = 0.01;  // the single mm -> scene-unit factor
-    double ui_font_scale = 1.0;  // web UI text scale (see [ui] font_scale)
+    double hit_scale = 0.01;         // the single mm -> scene-unit factor
+    double ui_font_scale = 1.0;      // web UI text scale (see [ui] font_scale)
     double ui_sidebar_width = -1.0;  // web menu width in px ([ui] sidebar_width); <0 = default
     // Per-category base font sizes (px) for the web UI, from [ui.fonts]. Keys
     // are category names (window_title, menu, heading, dialog, brand).
