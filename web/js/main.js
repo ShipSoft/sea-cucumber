@@ -10,6 +10,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { DataSource } from "./data.js";
+import { SCHEMES, DEFAULT_SCHEME } from "./schemes.js";
 
 const COL = {
   earth: 0x34240f, // panel background
@@ -261,6 +262,19 @@ function winFromRegion(rgn) {
   return [ax("x"), ax("y"), ax("z")];
 }
 
+// FNV-1a hash of a volume's SUBSYSTEM key, so all volumes in a subsystem map to
+// the same palette colour. Names look like "/SHiP/<subsystem>/.../<volume>";
+// we key on <subsystem> (the segment after the top), else the first segment.
+function subsystemHash(name) {
+  const parts = name.split("/").filter(Boolean);
+  let key = name;
+  if (parts.length >= 2) key = parts[0].toLowerCase() === "ship" ? parts[1] : parts[0];
+  else if (parts.length === 1) key = parts[0];
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h;
+}
+
 // Merge raw producer meshes (mm) into a few style buckets, compute normals once,
 // and return {buckets, box, offset} with SHARED typed arrays. The result is
 // reusable across panels (each still uploads to its own GL context, but the CPU
@@ -280,7 +294,16 @@ function computeGeometry(meshes, scale, win) {
     if (!m.vertices || !m.indices) continue;
     if (win && !meshInWindow(m, win)) continue;
     const t = m.transparency || 0;
-    const color = m.color || "#e3a93c";
+    // Colour by SUBSYSTEM, not per volume: every volume in a subsystem shares
+    // one colour, so a subsystem reads as a single colour rather than a mix.
+    // The subsystem key is the path segment after the top ("/SHiP/<subsystem>/
+    // ..."), falling back to the first segment or the whole name. Keying the
+    // hash on that (not the full name) also keeps the number of distinct
+    // colours small, which helps mesh batching.
+    let color = m.color || "#e3a93c";
+    if (schemeGeometry && schemeGeometry.length) {
+      color = schemeGeometry[subsystemHash(m.name || "") % schemeGeometry.length];
+    }
     const key = color + "|" + t;
     let bk = buckets.get(key);
     if (!bk) { bk = { color, transparency: t, pos: [], idx: [] }; buckets.set(key, bk); }
@@ -361,7 +384,53 @@ async function gotoEvent(i) {
 // toolbar
 $("prev").addEventListener("click", () => gotoEvent(current - 1));
 $("next").addEventListener("click", () => gotoEvent(current + 1));
-// --- font scale + categories + key bindings --------------------------------
+// --- colour schemes --------------------------------------------------------
+let schemeGeometry = null;   // active detector palette (array of hex), or null
+function hexToInt(hex) { return parseInt(hex.replace("#", ""), 16) || 0; }
+function hexRGB(hex) {
+  const n = hexToInt(hex);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbaOf(hex, a) { const [r, g, b] = hexRGB(hex); return `rgba(${r},${g},${b},${a})`; }
+
+// Apply a named scheme live: CSS variables (chrome), the 3D clear colour of
+// every panel, the hit/vertex marker colours, and the detector palette. Then
+// rebuild the geometry (recolour) and the current event (recolour markers).
+function applyScheme(name, opts = {}) {
+  const s = SCHEMES[name] || SCHEMES[DEFAULT_SCHEME];
+  const r = document.documentElement.style;
+  r.setProperty("--earth", s.bg);
+  r.setProperty("--earth-2", s.bg2 || s.bg);
+  r.setProperty("--earth-3", s.surface || s.bg);
+  r.setProperty("--cream", s.text);
+  r.setProperty("--yellow", s.accent);
+  r.setProperty("--pink", s.hit);
+  r.setProperty("--pink-lt", s.vertex);
+  r.setProperty("--ink-dim", rgbaOf(s.text, 0.6));
+  r.setProperty("--line", rgbaOf(s.text, 0.16));
+
+  COL.earth = hexToInt(s.bg);
+  COL.pink = hexToInt(s.hit);
+  COL.pinkLt = hexToInt(s.vertex);
+  schemeGeometry = s.geometry || null;
+  activeScheme = name;
+  const sel = $("scheme");
+  if (sel && sel.value !== name) sel.value = name;
+
+  // At boot (rebuild:false) the caller builds geometry right after, so we skip
+  // the rebuild to avoid doing it twice.
+  if (opts.rebuild === false) return;
+
+  _fullGeomCache.value = null;                 // palette changed -> invalidate
+  const setClear = (p) => p.renderer.setClearColor(COL.earth, 1);
+  setClear(main);
+  main.setGeometry(computeGeometry(meshes, scale, null));
+  floats.forEach((f) => { setClear(f.panel); f.panel.setGeometry(computeGeometry(meshes, scale, f.win)); });
+  if (typeof current === "number" && data.nEvents > 0) gotoEvent(current);
+}
+let activeScheme = DEFAULT_SCHEME;
+
+
 // Global multiplier on every category (set from [ui] font_scale / +/-).
 let fontScale = 1;
 function setFontScale(s) {
@@ -872,6 +941,18 @@ function toHex6(v) {
   return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#e3a93c";
 }
 
+// Colour-scheme selector (populated from SCHEMES).
+const schemeSel = $("scheme");
+if (schemeSel) {
+  for (const [key, sc] of Object.entries(SCHEMES)) {
+    const o = document.createElement("option");
+    o.value = key;
+    o.textContent = sc.label || key;
+    schemeSel.appendChild(o);
+  }
+  schemeSel.addEventListener("change", (e) => applyScheme(e.target.value));
+}
+
 const newViewBtn = $("newView");
 if (newViewBtn) newViewBtn.addEventListener("click", () => createFloatingView());
 
@@ -1133,6 +1214,9 @@ function tick() {
     }
     $("evMax").textContent = String(data.nEvents - 1);
 
+    // Colour scheme: from [ui] color_scheme (manifest) or the default. Applied
+    // before the first geometry build so it is coloured correctly from the off.
+    applyScheme((data.ui && data.ui.color_scheme) || DEFAULT_SCHEME, { rebuild: false });
     meshes = await data.loadGeometry();
     main.setGeometry(computeGeometry(meshes, scale, null));
     main.frame("3d");

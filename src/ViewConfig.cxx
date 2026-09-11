@@ -144,6 +144,7 @@ ViewConfig LoadViewConfig(const std::string& path) {
     if (auto ui = tbl["ui"].as_table()) {
         c.ui_font_scale = (*ui)["font_scale"].value_or(c.ui_font_scale);
         c.ui_sidebar_width = (*ui)["sidebar_width"].value_or(c.ui_sidebar_width);
+        c.ui_color_scheme = (*ui)["color_scheme"].value_or(c.ui_color_scheme);
         if (auto fonts = (*ui)["fonts"].as_table()) {
             for (auto&& [k, v] : *fonts) {
                 if (auto d = v.value<double>()) c.ui_fonts[std::string(k.str())] = *d;

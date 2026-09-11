@@ -143,6 +143,7 @@ struct ViewConfig {
     double hit_scale = 0.01;         // the single mm -> scene-unit factor
     double ui_font_scale = 1.0;      // web UI text scale (see [ui] font_scale)
     double ui_sidebar_width = -1.0;  // web menu width in px ([ui] sidebar_width); <0 = default
+    std::string ui_color_scheme;  // web colour scheme name ([ui] color_scheme); empty = default
     // Per-category base font sizes (px) for the web UI, from [ui.fonts]. Keys
     // are category names (window_title, menu, heading, dialog, brand).
     std::map<std::string, double> ui_fonts;
