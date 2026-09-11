@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# One run, three panes, each pinned to a RAW ROOT camera enum on the SAME
+# volumes -- so you can see which enum gives which orientation and tell me.
+# Adjust zmin/zmax to a region you can recognise at a glance.
+#
+#   sea_cucumber --geometry <db> --data <root> --view views/cameras.toml
+
+hit_scale = 0.01
+ntuple = "events"
+region_exclude = []
+
+[[region]]
+name = "RAW_orthoXOY"
+title = "kCameraOrthoXOY"
+zmin = 50000.0
+zmax = 80000.0
+camera = "orthoxoy"
+max_shapes = 1500
+max_transparency = 0
+
+[[region]]
+name = "RAW_orthoXOZ"
+title = "kCameraOrthoXOZ"
+zmin = 50000.0
+zmax = 80000.0
+camera = "orthoxoz"
+max_shapes = 1500
+max_transparency = 0
+
+[[region]]
+name = "RAW_orthoZOY"
+title = "kCameraOrthoZOY"
+zmin = 50000.0
+zmax = 80000.0
+camera = "orthozoy"
+max_shapes = 1500
+max_transparency = 0
+
+[geometry]
+include = ['.*']
+exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
+max_depth = 3
+stop_at_match = true
+default_transparency = 40
+
+[hits]
+marker_size = 4.0
+color_high = "#C64284"

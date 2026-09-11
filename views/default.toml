@@ -1,0 +1,124 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Default view configuration for sea_cucumber (SHiP outreach palette).
+#   #081B3C dark navy   #20428A blue   #C64284 pink   #F1DEBC cream
+
+hit_scale = 0.01
+ntuple = "events"
+
+# --- start-up cost knobs -----------------------------------------------------
+# scan_depth: how deep to look when resolving a region's `match` window.
+#   Subsystem envelopes are shallow, so 4 is usually plenty. An unbounded scan
+#   walks the whole ~1M-volume geometry and dominates start-up. Raise only if a
+#   `match` fails to resolve -- or better, give that region explicit zmin/zmax,
+#   which skips the scan entirely and is the fastest option.
+# region_depth: how deep to build geometry for the zoom views. Lower = faster
+#   start-up and lighter rendering, at the cost of internal detail.
+scan_depth = 4
+region_depth = 5
+
+# Exclude list for the deeper walk that feeds the zoom regions. Kept separate
+# from geometry.exclude because that one hides the neutrino detector for speed
+# in the big view -- but the SND region needs it. Dense subsystems stay out.
+region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
+
+# ---------------------------------------------------------------------------
+# Zoomed viewers, one per region, in screen order (top, middle, bottom right).
+# A region's selection window is given per AXIS -- xmin/xmax, ymin/ymax and/or
+# zmin/zmax (millimetres, any subset). A volume or hit is kept only if it sits
+# inside EVERY axis window that is set; unset axes are unconstrained.
+#
+# The window is INDEPENDENT of the camera: what you select and what you look
+# along are different choices. A side view ("xz") is normally a z slab; a front
+# view ("xy") normally an x or y slab. If they look inconsistent you get a
+# warning, never an error -- whatever windows you supplied are used, with z
+# preferred when present.
+#
+# Alternatively `match` derives a z window from the geometry by volume name
+# (regex or glob, case-insensitive), for detectors you'd rather not hardcode.
+#   ZOOM & FRAMING: each region is centred on its window MIDPOINT, so the window
+#     controls both -- narrow zmin/zmax (or add an x/y window) to zoom IN, widen
+#     to zoom out, shift the window to pan. The whole window is framed, so hits
+#     extending past the drawn geometry are no longer chopped. offset_x/y/z
+#     nudge the framing by hand (mm); recenter=false keeps global coordinates.
+#   camera: "xz" side view (looking along y) | "yz" along the beam (looking
+#     along x) | "xy" transverse, beam's-eye (looking along z) | "3d"
+#   hit_marker_size: marker size for hits in THIS view (omit to use [hits]).
+#     Zoom views usually want smaller markers, since the same hits cover much
+#     more screen area than in the full-detector view.
+#   draw_decay / decay_marker_size / decay_clip: show the truth decay vertex in
+#     THIS view, at its own size. decay_clip = true (default) draws it only when
+#     it falls inside the view's window -- leave it on for zoom views, because a
+#     vertex tens of metres away would stretch the camera fit and undo the zoom.
+#     Set decay_clip = false to pin it in regardless.
+#   exclude / include: drop or restrict volumes in THIS view only. Patterns may
+#     be regex (".*ms.*") or glob ("*ms*"), matched case-insensitively as a
+#     substring, e.g. exclude = ["*ms*"] hides every volume whose name
+#     contains "ms". exclude wins over include.
+#   max_shapes / max_transparency: rendering budget -- lower them if pan/zoom
+#   feels sluggish (WebGL cost scales with mesh count; transparency is the
+#   most expensive part).
+# ---------------------------------------------------------------------------
+[geometry]
+db_file = "ship_geometry.db"
+include = ['.*']
+exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*', '.*neutrino_detector.*']
+max_depth = 3
+stop_at_match = true
+default_color = "#20428A"
+default_transparency = 70
+
+# First matching rule (substring of the volume name) wins.
+[[geometry.style]]
+match = "DecayVolume"
+color = "#F1DEBC"      # cream vessel
+transparency = 55
+[[geometry.style]]
+match = "Vessel"
+color = "#F1DEBC"
+transparency = 55
+[[geometry.style]]
+match = "Tracker"
+color = "#20428A"
+transparency = 55
+[[geometry.style]]
+match = "Magnet"
+color = "#20428A"
+transparency = 60
+[[geometry.style]]
+match = "Timing"
+color = "#20428A"
+transparency = 50
+[[geometry.style]]
+match = "SBT"
+color = "#20428A"
+transparency = 80
+[[geometry.style]]
+match = "ECAL"
+color = "#081B3C"
+transparency = 45
+[[geometry.style]]
+match = "HCAL"
+color = "#081B3C"
+transparency = 50
+[[geometry.style]]
+match = "MuonShield"
+color = "#081B3C"
+transparency = 60
+[[geometry.style]]
+match = "Target"
+color = "#C64284"
+transparency = 40
+
+[hits]
+marker_style = 20
+marker_size = 2.5
+color_by_energy = true    # ramp cream (low) -> pink (high)
+color_low = "#F1DEBC"
+color_high = "#C64284"
+
+[decay]
+draw = true               # truth decay-vertex marker
+color = "#F1DEBC"
+marker_style = 29         # filled star
+marker_size = 3.0

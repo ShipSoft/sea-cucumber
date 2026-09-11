@@ -1,0 +1,29 @@
+# --- build / environment -----------------------------------------------------
+build/
+.pixi/
+
+# --- generated web assets (produced by: pixi run web-data) -------------------
+web/data/
+web/VERSION
+web/logo/
+web/configs/
+web/fonts/*.woff2
+
+# --- geometry cache (produced by: pixi run geo-cache) ------------------------
+geocache.*.root
+*.geocache.root
+
+# --- input data & large binaries (kept out of the repo) ----------------------
+files/
+*.root
+*.db
+*.tar.gz
+demo_events.root
+
+# --- saved view setups (keep only the checked-in default) --------------------
+configs/*.json
+!configs/sea_cucumber_default_setup.json
+
+# --- scratch -----------------------------------------------------------------
+volnames.txt
+volumes

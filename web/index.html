@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<!--
+  SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+  SPDX-License-Identifier: LGPL-3.0-or-later
+
+  sea_cucumber web frontend. Four-panel layout mirroring the REve display:
+  a control sidebar (left), the main 3D view (centre), and three region views
+  (Spectrometer / Calorimeter / SND) stacked on the right. C++ produces the
+  display files; this page renders them with three.js. No build step.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sea cucumber</title>
+    <link rel="icon" type="image/png" href="logo/sc.png" />
+    <link rel="stylesheet" href="css/app.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="app">
+      <!-- LEFT: control sidebar -->
+      <aside class="side">
+        <div class="brand">
+          <img class="brand__logo" src="logo/sc.png" alt="sea cucumber logo"
+               onerror="this.style.visibility='hidden'" />
+          <span class="brand__name">sea cucumber</span>
+          <span class="brand__ver mono" id="version"></span>
+        </div>
+
+        <section class="ctl">
+          <h2 class="ctl__h">Event</h2>
+          <div class="nav">
+            <button id="prev" class="btn" title="Previous event">&#8592;</button>
+            <span class="counter"><span id="evNum">–</span> / <span id="evMax">–</span></span>
+            <button id="next" class="btn" title="Next event">&#8594;</button>
+          </div>
+          <dl class="readout">
+            <dt>hits</dt><dd id="nHits" class="mono">0</dd>
+            <dt>z range</dt><dd id="zRange" class="mono">–</dd>
+          </dl>
+        </section>
+
+        <section class="ctl">
+          <h2 class="ctl__h">Show</h2>
+          <label class="toggle"><input type="checkbox" id="tGeo" checked /> geometry</label>
+          <label class="toggle"><input type="checkbox" id="tHits" checked /> hits</label>
+          <label class="toggle"><input type="checkbox" id="tVertex" checked /> decay vertex</label>
+          <label class="slider">hit size <span id="hitSizeVal" class="mono">4</span>
+            <input type="range" id="hitSize" min="1" max="16" step="1" value="4" />
+          </label>
+        </section>
+
+        <section class="ctl">
+          <h2 class="ctl__h">Views</h2>
+          <button id="newView" class="btn btn--wide">+ New view</button>
+          <button id="selectLoc" class="btn btn--wide btn--ghost">Select view location</button>
+          <div class="row2">
+            <button id="saveSetup" class="btn btn--ghost">Save setup</button>
+            <button id="loadSetup" class="btn btn--ghost">Load setup</button>
+          </div>
+          <input type="file" id="loadFile" accept="application/json,.json" hidden />
+        </section>
+
+        <section class="ctl">
+          <h2 class="ctl__h">Camera <span class="hint">(selected view, else main)</span></h2>
+          <div class="cams" role="group" aria-label="Main camera">
+            <button class="btn btn--ghost" data-cam="3d">3D</button>
+            <button class="btn btn--ghost" data-cam="side">Side</button>
+            <button class="btn btn--ghost" data-cam="front">Front</button>
+            <button class="btn btn--ghost" data-cam="top">Top</button>
+          </div>
+        </section>
+
+        <div class="side__foot" id="status"></div>
+      </aside>
+
+      <!-- CENTRE: main view (region views are now user-created via + New view) -->
+      <main class="main">
+        <canvas id="view-main" class="panel__canvas"></canvas>
+        <span class="panel__label">Main</span>
+      </main>
+    </div>
+
+    <!-- floating user-created views live here, above the fixed grid -->
+    <div id="float-layer" class="float-layer"></div>
+    <!-- rubber-band rectangle drawn while selecting a view location -->
+    <div id="rubber" class="rubber" hidden></div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
