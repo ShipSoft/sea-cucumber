@@ -37,6 +37,9 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 # Alternatively `match` derives a z window from the geometry by volume name
 # (regex or glob, case-insensitive), for detectors you'd rather not hardcode.
 #   ZOOM & FRAMING: each region is centred on its window MIDPOINT, so the window
+#   panel_x / panel_y / panel_w / panel_h: web panel placement in CSS pixels.
+#     This is the single source of the web layout -- edit these to arrange the
+#     zoom panels. Omit to let the client cascade them automatically.
 #     controls both -- narrow zmin/zmax (or add an x/y window) to zoom IN, widen
 #     to zoom out, shift the window to pan. The whole window is framed, so hits
 #     extending past the drawn geometry are no longer chopped. offset_x/y/z
@@ -59,6 +62,86 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 #   feels sluggish (WebGL cost scales with mesh count; transparency is the
 #   most expensive part).
 # ---------------------------------------------------------------------------
+# --- web UI -----------------------------------------------------------------
+[ui]
+# Global text scale for the web interface. Also adjustable live with +/- or by
+# right-clicking a label. 1.0 = default.
+font_scale = 1.0
+
+# Per-category base text sizes (px) for the web UI. Right-click any label in the
+# client to change one element or a whole category; set the persistent defaults
+# here.
+[ui.fonts]
+window_title = 13
+menu = 13
+heading = 13
+dialog = 13
+brand = 15
+
+[[region]]
+name = "Spectrometer"
+title = "Spectrometer (side view)"
+# Widened to cover every tracking station: event-16 hits cluster near 84k, 86k,
+# 93k and 95k mm, so the old 83k-93k cut off the last stations. Verify the true
+# geometry extent with:  --inspect 4  (read the station volumes' z spans).
+zmin = 82000.0
+zmax = 96000.0
+camera = "xz"
+# Higher budget so more than the first stations render (applied at display
+# time, so this needs no cache rebuild).
+max_shapes = 6000
+max_transparency = 30
+
+# A front view selects a transverse slab instead of a z slab, e.g.:
+#   [[region]]
+#   name = "CaloFront"
+#   camera = "xy"          # looking along z
+#   xmin = -2000.0
+#   xmax = 2000.0
+#   zmin = 96000.0         # optional: also pick the calorimeter along the beam
+#   zmax = 98000.0
+panel_x = 1225
+panel_y = 4
+panel_w = 360
+panel_h = 260
+
+[[region]]
+name = "Calorimeter"
+title = "Calorimeter (side view)"
+# The calorimeter hit cluster in event 16 spans ~97k-99.6k mm; the old 96k-98k
+# showed only its upstream third. Verify with:  --inspect 4
+zmin = 96000.0
+zmax = 100000.0
+camera = "xz"
+max_shapes = 6000
+max_transparency = 30
+panel_x = 1228
+panel_y = 268
+panel_w = 360
+panel_h = 260
+
+[[region]]
+name = "SND"
+title = "Scattering and Neutrino Detector (side view)"
+# Hide volumes from THIS view only. Find the names first with:
+#   sea_cucumber --geometry <db> --inspect 6 --inspect-match "*snd*"
+# then list them here (regex or glob, case-insensitive substring match):
+# exclude = ["*emulsion*", "*brick*"]
+# No hardcoded z: the window is taken from the geometry by name match.
+# Set zmin/zmax here if your geometry names it differently.
+# Explicit window so the web view can place it (match-only regions are not
+# emitted to the web manifest). Neutrino detector spans ~26400-31500 mm.
+zmin = 26400.0
+zmax = 31500.0
+camera = "xz"
+max_shapes = 6000
+max_transparency = 30
+panel_x = 1228
+panel_y = 532
+panel_w = 370
+panel_h = 291
+
+
 [geometry]
 db_file = "ship_geometry.db"
 include = ['.*']

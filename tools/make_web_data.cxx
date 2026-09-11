@@ -363,7 +363,18 @@ int main(int argc, char* argv[]) {
     const std::string mp = outDir + "/manifest.json";
     std::ofstream mj(mp);
     mj << "{\"nEvents\":" << nEv << ",\"geometry\":\"geometry.json\","
-       << "\"unit_mm_per_scene\":1000,\"regions\":[";
+       << "\"unit_mm_per_scene\":1000,\"ui\":{\"font_scale\":" << view.ui_font_scale;
+    if (view.ui_sidebar_width > 0) mj << ",\"sidebar_width\":" << view.ui_sidebar_width;
+    mj << ",\"fonts\":{";
+    {
+        bool firstF = true;
+        for (const auto& [k, v] : view.ui_fonts) {
+            if (!firstF) mj << ",";
+            firstF = false;
+            mj << "\"" << jsonEscape(k) << "\":" << v;
+        }
+    }
+    mj << "}},\"regions\":[";
     bool firstR = true;
     for (const auto& r : view.regions) {
         if (!r.hasAnyWindow()) continue;  // client can't place a match-only region
@@ -379,7 +390,25 @@ int main(int argc, char* argv[]) {
             firstAx = false;
             mj << "\"" << kAx[ax] << "\":[" << r.wmin[ax] << "," << r.wmax[ax] << "]";
         }
-        mj << "}}";
+        mj << "}";  // close window
+        // Optional panel layout (CSS px). Emitted only when set, so the client
+        // can fall back to a default cascade otherwise.
+        if (r.panel_x >= 0 || r.panel_y >= 0 || r.panel_w >= 0 || r.panel_h >= 0) {
+            mj << ",\"panel\":{";
+            bool firstP = true;
+            auto emitP = [&](const char* k, double val) {
+                if (val < 0) return;
+                if (!firstP) mj << ",";
+                firstP = false;
+                mj << "\"" << k << "\":" << val;
+            };
+            emitP("x", r.panel_x);
+            emitP("y", r.panel_y);
+            emitP("w", r.panel_w);
+            emitP("h", r.panel_h);
+            mj << "}";
+        }
+        mj << "}";  // close region
     }
     mj << "]}\n";
     mj.close();

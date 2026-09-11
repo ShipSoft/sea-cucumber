@@ -61,6 +61,10 @@ export class DataSource {
   // Region definitions for the right-hand zoom panels, mirroring the REve view
   // config. Each: { name, camera, window: {x:[lo,hi]|null, y:…, z:…} }. The
   // client filters geometry and hits into each region's window.
+  get ui() {
+    return (this.manifest && this.manifest.ui) || {};
+  }
+
   get regions() {
     return (this.manifest && this.manifest.regions) || [];
   }

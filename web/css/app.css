@@ -17,6 +17,14 @@
 }
 
 :root {
+  --font-scale: 1;   /* global multiplier on every category (set from [ui] font_scale / client) */
+  /* Per-category base sizes (px). Editable live and via [ui.fonts] in the view
+     TOML. Every text element belongs to one category. */
+  --fs-window_title: 13px;
+  --fs-menu: 13px;
+  --fs-heading: 13px;
+  --fs-dialog: 13px;
+  --fs-brand: 15px;
   --earth:   #34240f;   /* background: darker brown */
   --earth-2: #241809;   /* deeper wells (panels, gaps) */
   --earth-3: #45301a;   /* raised surfaces */
@@ -54,42 +62,42 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
 .brand { display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 8px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
 .brand__logo { width: 96px; height: 96px; object-fit: contain; display: block; }
-.brand__name { font-family: var(--mono); font-size: 15px; letter-spacing: 0.02em;
+.brand__name { font-family: var(--mono); font-size: calc(15px * var(--font-scale)); letter-spacing: 0.02em;
   color: var(--cream); }
-.brand__ver { font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+.brand__ver { font-size: calc(11px * var(--font-scale)); color: var(--ink-dim); margin-top: 2px; }
 
 .ctl { margin-bottom: 20px; }
-.ctl__h { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--yellow);
+.ctl__h { margin: 0 0 10px; font-size: calc(12px * var(--font-scale)); font-weight: 600; color: var(--yellow);
   text-transform: none; }
 
 .nav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.counter { font-family: var(--mono); font-size: 14px; color: var(--ink-dim); flex: 1;
+.counter { font-family: var(--mono); font-size: calc(14px * var(--font-scale)); color: var(--ink-dim); flex: 1;
   text-align: center; }
 .counter span { color: var(--cream); }
 
 .readout { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
-.readout dt { color: var(--ink-dim); font-size: 13px; }
-.readout dd { margin: 0; text-align: right; font-size: 13px; }
+.readout dt { color: var(--ink-dim); font-size: calc(13px * var(--font-scale)); }
+.readout dd { margin: 0; text-align: right; font-size: calc(13px * var(--font-scale)); }
 .mono { font-family: var(--mono); }
 
-.toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 0;
+.toggle { display: flex; align-items: center; gap: 8px; font-size: calc(13px * var(--font-scale)); padding: 5px 0;
   cursor: pointer; }
 .toggle input { accent-color: var(--pink); }
 
 .cams { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
-.side__foot { margin-top: auto; padding-top: 12px; font-size: 12px; color: var(--ink-dim);
+.side__foot { margin-top: auto; padding-top: 12px; font-size: calc(12px * var(--font-scale)); color: var(--ink-dim);
   min-height: 1em; }
 .side__foot code { color: var(--cream); font-family: var(--mono); }
 
-.slider { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 8px 0 2px;
+.slider { display: flex; align-items: center; gap: 8px; font-size: calc(13px * var(--font-scale)); padding: 8px 0 2px;
   color: var(--ink-dim); }
 .slider input[type="range"] { flex: 1; accent-color: var(--pink); }
 .slider .mono { color: var(--cream); min-width: 1.5em; text-align: right; }
 
 /* ---- buttons ----------------------------------------------------------- */
 .btn { appearance: none; border: 1px solid var(--line); background: var(--earth-3);
-  color: var(--cream); font: inherit; font-size: 14px; line-height: 1; padding: 8px 12px;
+  color: var(--cream); font: inherit; font-size: calc(14px * var(--font-scale)); line-height: 1; padding: 8px 12px;
   border-radius: 6px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
 .btn:hover { background: #5a3f22; }
 .btn:active { transform: translateY(1px); }
@@ -104,7 +112,7 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
 .rpanel { position: relative; background: var(--earth); overflow: hidden; }
 
 .panel__canvas { display: block; width: 100%; height: 100%; }
-.panel__label { position: absolute; top: 8px; left: 10px; font-size: 12px; color: var(--ink-dim);
+.panel__label { position: absolute; top: 8px; left: 10px; font-size: calc(12px * var(--font-scale)); color: var(--ink-dim);
   font-family: var(--mono); pointer-events: none; text-shadow: 0 1px 2px var(--earth-2); }
 
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
@@ -134,18 +142,18 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
   cursor: move; user-select: none;
   flex: 0 0 auto;
 }
-.fpanel__title { font-family: var(--mono); font-size: 13px; color: var(--cream); flex: 1;
+.fpanel__title { font-family: var(--mono); font-size: calc(13px * var(--font-scale)); color: var(--cream); flex: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fpanel__rename { font: inherit; font-family: var(--mono); font-size: 13px; flex: 1;
+.fpanel__rename { font: inherit; font-family: var(--mono); font-size: calc(13px * var(--font-scale)); flex: 1;
   background: var(--earth-2); color: var(--cream); border: 1px solid var(--yellow);
   border-radius: 4px; padding: 1px 4px; }
 .fpanel__close { appearance: none; border: 0; background: transparent; color: var(--ink-dim);
-  font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+  font-size: calc(18px * var(--font-scale)); line-height: 1; cursor: pointer; padding: 0 2px; }
 .fpanel__close:hover { color: var(--pink); }
 .fpanel__canvas { display: block; flex: 1 1 auto; width: 100%; height: 100%; min-height: 0; }
 
 /* ---- selected view + section hint --------------------------------------- */
-.hint { font-weight: 400; color: var(--ink-dim); font-size: 11px; }
+.hint { font-weight: 400; color: var(--ink-dim); font-size: calc(11px * var(--font-scale)); }
 .fpanel.is-selected { border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow),
   0 8px 28px rgba(0, 0, 0, 0.45); }
 
@@ -155,14 +163,14 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
 
 /* ---- two-up button row (save/load) ------------------------------------- */
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
-.row2 .btn { padding: 7px 8px; font-size: 13px; }
+.row2 .btn { padding: 7px 8px; font-size: calc(13px * var(--font-scale)); }
 
 /* ---- context menu ------------------------------------------------------- */
 .ctxmenu { position: fixed; z-index: 200; min-width: 180px; padding: 5px;
   background: var(--earth-3); border: 1px solid var(--line); border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .ctxmenu__item { display: block; width: 100%; text-align: left; border: 0; background: transparent;
-  color: var(--cream); font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 5px;
+  color: var(--cream); font: inherit; font-size: calc(13px * var(--font-scale)); padding: 7px 10px; border-radius: 5px;
   cursor: pointer; }
 .ctxmenu__item:hover { background: var(--blue); }
 .ctxmenu__sep { height: 1px; background: var(--line); margin: 5px 4px; }
@@ -172,9 +180,9 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
   display: grid; place-items: center; }
 .popout { min-width: 260px; background: var(--earth); border: 1px solid var(--line);
   border-radius: 10px; padding: 18px; box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5); }
-.popout__title { margin: 0 0 14px; font-size: 15px; color: var(--cream); }
+.popout__title { margin: 0 0 14px; font-size: calc(15px * var(--font-scale)); color: var(--cream); }
 .field { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  font-size: 13px; color: var(--ink-dim); margin-bottom: 10px; }
+  font-size: calc(13px * var(--font-scale)); color: var(--ink-dim); margin-bottom: 10px; }
 .field input { font: inherit; background: var(--earth-2); color: var(--cream);
   border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; width: 130px; }
 .popout__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
@@ -185,5 +193,50 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
 .fpanel.is-locked { border-width: 1px; box-shadow: none; resize: none; }
 .fpanel.is-locked .fpanel__bar { height: 20px; background: transparent; border-bottom: 0;
   cursor: default; }
-.fpanel.is-locked .fpanel__title { font-size: 11px; opacity: 0.75; }
+.fpanel.is-locked .fpanel__title { font-size: calc(11px * var(--font-scale)); opacity: 0.75; }
 .fpanel.is-locked .fpanel__close { display: none; }
+
+/* ---- keyboard-shortcut help overlay ------------------------------------- */
+.help { position: fixed; z-index: 300; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: var(--earth); border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5); color: var(--cream); cursor: pointer; }
+.help h3 { margin: 0 0 12px; font-size: calc(15px * var(--font-scale)); }
+.help table { border-collapse: collapse; font-size: calc(13px * var(--font-scale)); }
+.help td { padding: 3px 14px 3px 0; }
+.help td:first-child { font-family: var(--mono); color: var(--yellow); white-space: nowrap; }
+.help p { margin: 12px 0 0; font-size: calc(12px * var(--font-scale)); color: var(--ink-dim); }
+
+/* ---- font categories ----------------------------------------------------- */
+/* These come after the per-element rules, so they set the effective size by
+   category. Editing a category variable (dialog or [ui.fonts]) resizes every
+   element of that category at once; --font-scale multiplies all of them. */
+.brand__name { font-size: calc(var(--fs-brand) * var(--font-scale)); }
+.brand__ver, .counter, .readout dt, .readout dd, .toggle, .side__foot, .slider,
+.btn, .hint, .row2 .btn { font-size: calc(var(--fs-menu) * var(--font-scale)); }
+.ctl__h, .popout__title, .help h3 { font-size: calc(var(--fs-heading) * var(--font-scale)); }
+.panel__label, .fpanel__title, .fpanel__rename {
+  font-size: calc(var(--fs-window_title) * var(--font-scale)); }
+.fpanel.is-locked .fpanel__title {
+  font-size: calc(var(--fs-window_title) * var(--font-scale) * 0.85); }
+.ctxmenu__item, .field, .field input, .help table, .help p {
+  font-size: calc(var(--fs-dialog) * var(--font-scale)); }
+
+/* ---- grow containers so enlarged text isn't clipped by a window border --- */
+/* Panel title bar grows with its text instead of clipping it. */
+.fpanel__bar { height: auto; min-height: 28px; }
+/* The sidebar already scrolls vertically; let long control text wrap rather
+   than overflow the fixed-width column. */
+.side { overflow-y: auto; overflow-x: hidden; }
+.toggle, .slider, .counter { flex-wrap: wrap; }
+
+/* ---- draggable sidebar edge --------------------------------------------- */
+.side-resize {
+  position: fixed; top: 0; left: calc(var(--side-w) - 3px);
+  width: 8px; height: 100vh; cursor: col-resize; z-index: 60; background: transparent;
+}
+.side-resize:hover, .side-resize.is-dragging { background: var(--yellow); opacity: 0.6; }
+
+/* ---- text-style dialog subheadings -------------------------------------- */
+.popout__sub { margin: 10px 0 6px; font-size: calc(var(--fs-heading) * var(--font-scale));
+  color: var(--yellow); }
+.popout__sub:first-child { margin-top: 0; }

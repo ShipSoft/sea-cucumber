@@ -166,7 +166,12 @@ class Panel {
 
   resize() {
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-    if (w && h && (this.canvas.width !== w || this.canvas.height !== h)) {
+    // Compare against the CSS size we last applied, NOT canvas.width: with
+    // setPixelRatio(pr) the backing store is pr*w, so `canvas.width !== w` is
+    // always true and would resize+render every frame, pegging the CPU/GPU.
+    if (w && h && (w !== this._cssW || h !== this._cssH)) {
+      this._cssW = w;
+      this._cssH = h;
       this.renderer.setSize(w, h, false);
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
@@ -356,10 +361,176 @@ async function gotoEvent(i) {
 // toolbar
 $("prev").addEventListener("click", () => gotoEvent(current - 1));
 $("next").addEventListener("click", () => gotoEvent(current + 1));
+// --- font scale + categories + key bindings --------------------------------
+// Global multiplier on every category (set from [ui] font_scale / +/-).
+let fontScale = 1;
+function setFontScale(s) {
+  fontScale = Math.min(3, Math.max(0.4, s));
+  document.documentElement.style.setProperty("--font-scale", String(fontScale));
+  fitPanels();
+}
+
+// Text categories: each maps a set of elements to a CSS size variable, so one
+// value resizes the whole category. Keys match [ui.fonts] in the view TOML.
+const FONT_CATEGORIES = [
+  { key: "window_title", label: "window titles",
+    sel: ".panel__label,.fpanel__title,.fpanel__rename" },
+  { key: "menu", label: "menu text",
+    sel: ".brand__ver,.counter,.readout dt,.readout dd,.toggle,.side__foot,.slider,.btn,.hint" },
+  { key: "heading", label: "headings", sel: ".ctl__h,.popout__title,.help h3" },
+  { key: "dialog", label: "dialogs & menus", sel: ".ctxmenu__item,.field,.help table,.help p" },
+  { key: "brand", label: "logo text", sel: ".brand__name" },
+];
+function categoryOf(el) {
+  for (const c of FONT_CATEGORIES) if (el.matches && el.matches(c.sel)) return c;
+  return null;
+}
+function categorySize(key) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--fs-" + key);
+  return Math.round(parseFloat(v)) || 13;
+}
+function setCategorySize(key, px) {
+  document.documentElement.style.setProperty("--fs-" + key, Math.max(6, px) + "px");
+  fitPanels();
+}
+
+// A numeric font-size dialog: set just this element, or all of its category.
+// rgb(...) -> #rrggbb for the native colour input.
+function rgbToHex(rgb) {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgb || "");
+  if (!m) return "#f1debc";
+  const h = (n) => Number(n).toString(16).padStart(2, "0");
+  return "#" + h(m[1]) + h(m[2]) + h(m[3]);
+}
+// Set the text colour of every element in a category (live). New elements added
+// later won't inherit it -- colour tweaks are a live, throwaway convenience.
+function setCategoryColor(cat, hex) {
+  document.querySelectorAll(cat.sel).forEach((e) => { e.style.color = hex; });
+}
+
+// Right-click a text label -> set its font size AND colour, for this element
+// alone or for its whole category.
+function showTextDialog(el) {
+  const cat = categoryOf(el);
+  const curSize = Math.round(parseFloat(getComputedStyle(el).fontSize)) || 13;
+  const curHex = rgbToHex(getComputedStyle(el).color);
+  showPopout("Text style", (body, close) => {
+    const catSizeRow = cat
+      ? `<label class="field">all ${cat.label} <input id="tdCatSize" type="number" min="6" max="72" value="${categorySize(cat.key)}"></label>` +
+        `<div class="popout__actions"><button id="tdCatSizeSet" class="btn">Set all ${cat.label}</button></div>`
+      : "";
+    const catColRow = cat
+      ? `<label class="field">all ${cat.label} <input id="tdCatCol" type="text" value="${curHex}" spellcheck="false"></label>` +
+        `<div class="popout__actions"><button id="tdCatColSet" class="btn">Set all ${cat.label}</button></div>`
+      : "";
+    body.innerHTML =
+      `<h4 class="popout__sub">Size (px)</h4>` +
+      `<label class="field">this element <input id="tdSize" type="number" min="6" max="72" value="${curSize}"></label>` +
+      `<div class="popout__actions"><button id="tdSizeSet" class="btn">Set element</button></div>` +
+      catSizeRow +
+      `<h4 class="popout__sub">Colour</h4>` +
+      `<input id="tdPick" type="color" value="${curHex}" class="cpick" />` +
+      `<label class="field">this element <input id="tdCol" type="text" value="${curHex}" spellcheck="false"></label>` +
+      `<div class="popout__actions"><button id="tdColSet" class="btn">Set element</button></div>` +
+      catColRow +
+      `<div class="popout__actions"><button id="tdDone" class="btn btn--ghost">Done</button></div>`;
+
+    // size
+    body.querySelector("#tdSizeSet").addEventListener("click", () => {
+      el.style.fontSize = Math.max(6, Number(body.querySelector("#tdSize").value) || curSize) + "px";
+      fitPanels();
+    });
+    if (cat) body.querySelector("#tdCatSizeSet").addEventListener("click", () => {
+      setCategorySize(cat.key, Math.max(6, Number(body.querySelector("#tdCatSize").value) || categorySize(cat.key)));
+    });
+    // colour: keep the picker and the hex field in sync
+    const pick = body.querySelector("#tdPick");
+    const col = body.querySelector("#tdCol");
+    pick.addEventListener("input", () => { col.value = pick.value; });
+    body.querySelector("#tdColSet").addEventListener("click", () => {
+      const v = col.value.trim() || curHex;
+      el.style.color = v;
+    });
+    if (cat) body.querySelector("#tdCatColSet").addEventListener("click", () => {
+      const v = body.querySelector("#tdCatCol").value.trim() || curHex;
+      setCategoryColor(cat, v);
+    });
+    body.querySelector("#tdDone").addEventListener("click", close);
+  });
+}
+
+// Grow floating panels so enlarged text isn't clipped: if content is taller
+// than the panel, bump the panel height to fit.
+function fitPanels() {
+  for (const f of floats) {
+    const need = f.el.scrollHeight;
+    if (need > f.el.clientHeight) f.el.style.height = need + "px";
+  }
+}
+
+function typing(e) {
+  const t = e.target;
+  return t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+}
+
 window.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowLeft") gotoEvent(current - 1);
-  if (e.key === "ArrowRight") gotoEvent(current + 1);
+  // Let the browser keep its native shortcuts (Ctrl/Cmd +/- zoom, etc.) and
+  // ignore keys while typing.
+  if (e.ctrlKey || e.metaKey || e.altKey || typing(e)) return;
+  const t = () => (selectedView ? selectedView.panel : main);
+  switch (e.key) {
+    case "ArrowLeft":  gotoEvent(current - 1); break;
+    case "ArrowRight": gotoEvent(current + 1); break;
+    case "n": createFloatingView(); break;
+    case "3": t().frame("3d"); break;
+    case "s": t().frame("side"); break;
+    case "f": t().frame("front"); break;
+    case "t": t().frame("top"); break;
+    case "g": { const p = targetPanel(); p.opts.geo = !p.opts.geo; p.applyOpts(); syncControls(p); break; }
+    case "h": { const p = targetPanel(); p.opts.hits = !p.opts.hits; p.applyOpts(); syncControls(p); break; }
+    case "v": { const p = targetPanel(); p.opts.vertex = !p.opts.vertex; p.applyOpts(); syncControls(p); break; }
+    case "+": case "=": setFontScale(fontScale + 0.1); break;
+    case "-": case "_": setFontScale(fontScale - 0.1); break;
+    case "?": toggleHelp(); break;
+    default: return;
+  }
+  e.preventDefault();
 });
+
+// Right-click a text label -> the numeric font-size dialog for that element /
+// its category. Capture phase so it takes precedence over the panel menu, but
+// only for recognised text; everything else falls through.
+const TEXT_SELECTOR =
+  ".ctl__h, .toggle, .counter, .readout dt, .readout dd, .brand__name, .brand__ver, " +
+  ".panel__label, .fpanel__title, .slider, .side__foot, .btn";
+document.addEventListener("contextmenu", (e) => {
+  const el = e.target.closest(TEXT_SELECTOR);
+  if (!el) return;
+  e.preventDefault();
+  e.stopPropagation();
+  showTextDialog(el);
+}, true);
+
+// Keyboard-shortcut help overlay, toggled with "?".
+function toggleHelp() {
+  const existing = $("help");
+  if (existing) { existing.remove(); return; }
+  const box = document.createElement("div");
+  box.id = "help";
+  box.className = "help";
+  box.innerHTML =
+    "<h3>Keyboard shortcuts</h3><table>" +
+    "<tr><td>&#8592; / &#8594;</td><td>previous / next event</td></tr>" +
+    "<tr><td>n</td><td>new view</td></tr>" +
+    "<tr><td>3 / s / f / t</td><td>camera: 3D / side / front / top</td></tr>" +
+    "<tr><td>g / h / v</td><td>toggle geometry / hits / vertex</td></tr>" +
+    "<tr><td>+ / -</td><td>all text larger / smaller</td></tr>" +
+    "<tr><td>Ctrl +/-</td><td>browser zoom (native)</td></tr>" +
+    "<tr><td>?</td><td>this help</td></tr></table>" +
+    "<p>Right-click a label to set its font size (or its whole category).</p>";
+  box.addEventListener("click", () => box.remove());
+  document.body.appendChild(box);
+}
 for (const b of document.querySelectorAll("[data-cam]")) {
   b.addEventListener("click", () => {
     // Reorient the selected view if there is one, otherwise the main view.
@@ -430,11 +601,11 @@ function createFloatingView(opts = {}) {
   const layer = $("float-layer");
   const el = document.createElement("section");
   el.className = "fpanel";
-  const off = 40 + (floats.length % 6) * 26;  // cascade so they don't overlap exactly
-  el.style.left = off + "px";
-  el.style.top = off + "px";
-  el.style.width = "360px";
-  el.style.height = "260px";
+  const off = 4 + (floats.length % 6) * 3;  // % cascade so they don't overlap exactly
+  el.style.left = off + "%";
+  el.style.top = off + "%";
+  el.style.width = "28%";
+  el.style.height = "34%";
 
   const name = `view_${floatSeq++}`;
   const bar = document.createElement("div");
@@ -717,9 +888,15 @@ function currentSetup() {
     main: { opts: { ...main.opts }, camera: main.getCameraState() },
     views: floats.map((f) => ({
       name: f.name,
+      // Use the rendered pixel box, not el.style.*: the native corner-resize
+      // handle doesn't reliably write back to inline style, so style.width/
+      // height can be empty/stale. offset* is always the true current geometry,
+      // so this captures both dragged position and resized size.
       rect: {
-        left: f.el.style.left, top: f.el.style.top,
-        width: f.el.style.width, height: f.el.style.height,
+        left: f.el.offsetLeft + "px",
+        top: f.el.offsetTop + "px",
+        width: f.el.offsetWidth + "px",
+        height: f.el.offsetHeight + "px",
       },
       win: f.win,
       opts: { ...f.panel.opts },
@@ -738,14 +915,33 @@ function applyCamera(panel, cam) {
   else panel.setCameraState(cam);
 }
 
-function saveSetup() {
-  const blob = new Blob([JSON.stringify(currentSetup(), null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "sea_cucumber_setup.json";
-  a.click();
-  URL.revokeObjectURL(url);
+async function saveSetup() {
+  const text = JSON.stringify(currentSetup(), null, 2);
+  // Persist to the authoritative config via the dev server, so a reload shows
+  // this layout. If the server can't accept the write (e.g. a plain static
+  // server), fall back to downloading the file for manual placement.
+  try {
+    const r = await fetch("/api/save-setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: text,
+    });
+    if (r.ok) {
+      setStatus("Saved as default. Reload keeps this layout.");
+      setTimeout(() => setStatus(""), 2500);
+      return;
+    }
+    throw new Error("HTTP " + r.status);
+  } catch (_) {
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sea_cucumber_setup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus("Server read-only — downloaded file; place it in configs/ to make it the default.");
+  }
 }
 
 function loadSetup(setup) {
@@ -930,6 +1126,11 @@ function tick() {
     setStatus("Loading…");
     await data.loadManifest();
     scale = 1 / data.mmPerScene;
+    if (data.ui && data.ui.font_scale) setFontScale(data.ui.font_scale);  // TOML [ui] font_scale
+    if (data.ui && data.ui.sidebar_width) document.documentElement.style.setProperty("--side-w", data.ui.sidebar_width + "px");
+    if (data.ui && data.ui.fonts) {
+      for (const [k, v] of Object.entries(data.ui.fonts)) setCategorySize(k, v);  // [ui.fonts]
+    }
     $("evMax").textContent = String(data.nEvents - 1);
 
     meshes = await data.loadGeometry();
@@ -939,12 +1140,32 @@ function tick() {
 
     await gotoEvent(0);
 
-    // Auto-load the default view setup if present. Best-effort: absent or
-    // invalid file just leaves the plain main-only view.
-    try {
-      const r = await fetch("configs/sea_cucumber_default_setup.json", { cache: "no-store" });
-      if (r.ok) loadSetup(await r.json());
-    } catch (_) { /* no default setup; fine */ }
+    // Build the region views from the manifest, which the producer fills from
+    // views/default.toml (model A: the TOML is the single source of the web
+    // layout -- windows, cameras, and panel position/size). No JSON setup, no
+    // localStorage. Edit the [[region]] blocks in views/default.toml to change
+    // the default arrangement.
+    let cascade = 0;
+    for (const rgn of data.regions) {
+      const win = winFromRegion(rgn);
+      const entry = createFloatingView({ win });
+      if (rgn.name) {
+        entry.name = rgn.name;
+        const t = entry.el.querySelector(".fpanel__title");
+        if (t) t.textContent = rgn.name;
+      }
+      // Panel geometry from the TOML (panel_x/y/w/h -> manifest .panel),
+      // interpreted as VIEWPORT PERCENTAGES so a layout is resolution-
+      // independent. Falls back to a percentage cascade when unset.
+      const p = rgn.panel || {};
+      const off = 4 + (cascade++ % 6) * 3;   // % cascade
+      entry.el.style.left = (p.x != null ? p.x : off) + "%";
+      entry.el.style.top = (p.y != null ? p.y : off) + "%";
+      entry.el.style.width = (p.w != null ? p.w : 26) + "%";
+      entry.el.style.height = (p.h != null ? p.h : 34) + "%";
+      applyCamera(entry.panel, rgn.camera || "side");
+    }
+    selectView(null);
 
     setStatus("");
     tick();
@@ -952,4 +1173,26 @@ function tick() {
     setStatus(`No display data under <code>${data.base}</code>. Produce it, then reload.<br /><code>${e.message}</code>`);
     tick();
   }
+})();
+
+// --- draggable sidebar width ------------------------------------------------
+(function () {
+  const handle = $("sideResize");
+  if (!handle) return;
+  const MIN = 0, MAX = () => window.innerWidth;  // menu can be any width
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    handle.classList.add("is-dragging");
+    const move = (ev) => {
+      const w = Math.min(MAX(), Math.max(MIN, ev.clientX));
+      document.documentElement.style.setProperty("--side-w", w + "px");
+    };
+    const up = () => {
+      handle.classList.remove("is-dragging");
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
 })();

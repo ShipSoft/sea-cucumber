@@ -118,10 +118,7 @@ ViewConfig LoadViewConfig(const std::string& path) {
             candidates.push_back(std::string(prefix) + "/share/sea_cucumber/views/default.toml");
         }
         for (const auto& cand : candidates) {
-            if (std::filesystem::exists(cand)) {
-                p = cand;
-                break;
-            }
+            if (std::filesystem::exists(cand)) { p = cand; break; }
         }
         if (p.empty()) {
             std::cerr << "[ViewConfig] no --view given and no default config found; "
@@ -141,6 +138,15 @@ ViewConfig LoadViewConfig(const std::string& path) {
     }
 
     c.hit_scale = tbl["hit_scale"].value_or(c.hit_scale);
+    if (auto ui = tbl["ui"].as_table()) {
+        c.ui_font_scale = (*ui)["font_scale"].value_or(c.ui_font_scale);
+        c.ui_sidebar_width = (*ui)["sidebar_width"].value_or(c.ui_sidebar_width);
+        if (auto fonts = (*ui)["fonts"].as_table()) {
+            for (auto&& [k, v] : *fonts) {
+                if (auto d = v.value<double>()) c.ui_fonts[std::string(k.str())] = *d;
+            }
+        }
+    }
     c.scan_depth = tbl["scan_depth"].value_or(c.scan_depth);
     c.region_depth = tbl["region_depth"].value_or(c.region_depth);
     c.ntuple = tbl["ntuple"].value_or(c.ntuple);
@@ -200,6 +206,10 @@ ViewConfig LoadViewConfig(const std::string& path) {
             v.title = (*t)["title"].value_or(v.name);
             v.match = (*t)["match"].value_or(v.match);
             v.camera = (*t)["camera"].value_or(v.camera);
+            v.panel_x = (*t)["panel_x"].value_or(v.panel_x);
+            v.panel_y = (*t)["panel_y"].value_or(v.panel_y);
+            v.panel_w = (*t)["panel_w"].value_or(v.panel_w);
+            v.panel_h = (*t)["panel_h"].value_or(v.panel_h);
             if (auto ex = (*t)["exclude"]; ex) v.exclude = toStringVec(ex);
             if (auto in = (*t)["include"]; in) v.include = toStringVec(in);
             v.max_shapes = static_cast<std::size_t>(
@@ -227,8 +237,8 @@ ViewConfig LoadViewConfig(const std::string& path) {
                     v.wmax[ax] = std::max(*a, *b);
                     v.has_window[ax] = true;
                 } else if (a || b) {
-                    std::cerr << "[ViewConfig] region '" << v.name << "': " << kMinKey[ax] << "/"
-                              << kMaxKey[ax]
+                    std::cerr << "[ViewConfig] region '" << v.name << "': " << kMinKey[ax]
+                              << "/" << kMaxKey[ax]
                               << " must be given as a pair -- ignoring the lone value\n";
                 }
             }
@@ -239,12 +249,14 @@ ViewConfig LoadViewConfig(const std::string& path) {
             const bool front = (v.camera == "xy" || v.camera == "yx");
             if (front && !v.has_window[0] && !v.has_window[1]) {
                 if (v.has_window[2]) {
-                    std::cerr << "[ViewConfig] region '" << v.name << "': camera \"" << v.camera
+                    std::cerr << "[ViewConfig] region '" << v.name
+                              << "': camera \"" << v.camera
                               << "\" is a front view (looking along z), which normally selects "
                                  "an x or y slab, but only zmin/zmax were given -- using the z "
                                  "window\n";
                 } else if (v.match.empty()) {
-                    std::cerr << "[ViewConfig] region '" << v.name << "': camera \"" << v.camera
+                    std::cerr << "[ViewConfig] region '" << v.name
+                              << "': camera \"" << v.camera
                               << "\" but no window at all -- set xmin/xmax (or ymin/ymax, or "
                                  "zmin/zmax), or a `match` pattern\n";
                 }

@@ -63,7 +63,7 @@
           <button id="newView" class="btn btn--wide">+ New view</button>
           <button id="selectLoc" class="btn btn--wide btn--ghost">Select view location</button>
           <div class="row2">
-            <button id="saveSetup" class="btn btn--ghost">Save setup</button>
+            <button id="saveSetup" class="btn btn--ghost">Save as default</button>
             <button id="loadSetup" class="btn btn--ghost">Load setup</button>
           </div>
           <input type="file" id="loadFile" accept="application/json,.json" hidden />
@@ -81,6 +81,7 @@
 
         <div class="side__foot" id="status"></div>
       </aside>
+      <div class="side-resize" id="sideResize" title="Drag to resize the menu"></div>
 
       <!-- CENTRE: main view (region views are now user-created via + New view) -->
       <main class="main">

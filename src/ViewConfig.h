@@ -17,6 +17,7 @@
 // =============================================================================
 
 #include <cstddef>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -88,6 +89,15 @@ struct RegionView {
     // | "xy" transverse/front view (looking along z) | "3d" perspective
     std::string camera = "xz";
 
+    // Web panel placement as VIEWPORT PERCENTAGES (0..100) for this region's
+    // view, so a layout is resolution-independent. < 0 means "not set" -> the
+    // web client falls back to a default cascade. views/default.toml is the
+    // single source of the web layout (model A): edit these to arrange panels.
+    double panel_x = -1.0;
+    double panel_y = -1.0;
+    double panel_w = -1.0;
+    double panel_h = -1.0;
+
     // Volumes to drop from / restrict to THIS view only. Patterns may be
     // regex (".*ms.*") or glob ("*ms*"), matched case-insensitively as a
     // substring. exclude wins over include.
@@ -126,11 +136,18 @@ struct RegionView {
     double offset_z = 0.0;
 
     /// True when at least one axis window is set explicitly.
-    bool hasAnyWindow() const { return has_window[0] || has_window[1] || has_window[2]; }
+    bool hasAnyWindow() const {
+        return has_window[0] || has_window[1] || has_window[2];
+    }
 };
 
 struct ViewConfig {
     double hit_scale = 0.01;  // the single mm -> scene-unit factor
+    double ui_font_scale = 1.0;  // web UI text scale (see [ui] font_scale)
+    double ui_sidebar_width = -1.0;  // web menu width in px ([ui] sidebar_width); <0 = default
+    // Per-category base font sizes (px) for the web UI, from [ui.fonts]. Keys
+    // are category names (window_title, menu, heading, dialog, brand).
+    std::map<std::string, double> ui_fonts;
     std::string ntuple = "events";
     GeometryConfig geometry;
     HitStyle hits;
