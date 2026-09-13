@@ -71,25 +71,21 @@ export const SCHEMES = {
                "#ebcd94", "#f0d7aa", "#f1debc"],
   },
     ship_db7: {
+      // first color in geometry: calo + hall
+      // second color: box around spectrometer magnet?
+      // third color: 
     label: "SHiP dark dark blue monochrome",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#79eba",
-    geometry: ["#20428a", "#c64284", "#4b67a2", "#617aad",
+    geometry: ["#20428a", "#365697", "#c64284", "#617aad",
                "#798eba", "#8fa1c5"],
   },
   ship_light: {
     label: "SHiP light",
     bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
-    text: "#232323", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#e3a0c1",
-    geometry: ["#333333", "#373737", "#424242", "#464646",
-               "#505050", "#555555", "#606060"],
-  },
-  ship_light2: {
-    label: "SHiP light 2",
-    bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
     text: "#232323", accent: "#e3a93c", hit: "#c64284", vertex: "#e3a0c1",
-    geometry: ["#f7f7f7", "#f3f3f3", "#eeeeee", "#e7e7e7",
-               "#e3e3e3", "#dddddd", "#dadada"],
+    geometry: ["#fafafa", "#f7f7f7", "#f3f3f3", "#eeeeee",
+               "#eaeaea", "#e7e7e7", "#e3e3e3"],
   },
   ship_ht: {
     // "Everything pink", using the palette's pink range: muted/dark pinks for
