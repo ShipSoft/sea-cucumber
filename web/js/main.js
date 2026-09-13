@@ -278,50 +278,6 @@ function winFromRegion(rgn) {
   return [ax("x"), ax("y"), ax("z")];
 }
 
-// --- hidden components -----------------------------------------------------
-// Names of geometry volumes the user has hidden (persistent; keyed on the
-// volume's own name so it is independent of the geometry's organisation).
-const hidden = new Set();
-// Per-event hidden hits (indices into the current event's hits) and vertex.
-// These reset when the event changes, since indices are event-specific.
-const hiddenHits = new Set();
-let hiddenVertex = false;
-// Undo stack: each entry records what a single hide operation newly hid.
-const hideUndo = [];
-
-// Rebuild geometry (after the hidden set or palette changes) without refetching.
-function rebuildGeometry() {
-  _fullGeomCache.value = null;
-  main.setGeometry(computeGeometry(meshes, scale, null));
-  floats.forEach((f) => f.panel.setGeometry(computeGeometry(meshes, scale, f.win)));
-}
-// Rebuild the current event across panels (after hiding hits/vertex).
-function refreshEvent() {
-  if (!lastEvent) return;
-  main.setEvent(lastEvent, scale, null);
-  floats.forEach((f) => f.panel.setEvent(lastEvent, scale, f.win || null));
-}
-
-// Undo the most recent hide operation.
-function undoHide() {
-  const a = hideUndo.pop();
-  if (!a) return;
-  let geoChanged = false, evChanged = false;
-  for (const n of a.geo) { hidden.delete(n); geoChanged = true; }
-  for (const i of a.hits) { hiddenHits.delete(i); evChanged = true; }
-  if (a.vertex) { hiddenVertex = false; evChanged = true; }
-  if (geoChanged) rebuildGeometry();
-  if (evChanged) refreshEvent();
-}
-// Restore everything to the default (nothing hidden).
-function restoreDefault() {
-  const hadGeo = hidden.size > 0;
-  const hadEv = hiddenHits.size > 0 || hiddenVertex;
-  hidden.clear(); hiddenHits.clear(); hiddenVertex = false; hideUndo.length = 0;
-  if (hadGeo) rebuildGeometry();
-  if (hadEv) refreshEvent();
-}
-
 // FNV-1a hash of a volume's SUBSYSTEM key, so all volumes in a subsystem map to
 // the same palette colour. Names look like "/SHiP/<subsystem>/.../<volume>";
 // we key on <subsystem> (the segment after the top), else the first segment.
@@ -486,19 +442,13 @@ function applyScheme(name, opts = {}) {
 
   // At boot (rebuild:false) the caller builds geometry right after, so we skip
   // the rebuild to avoid doing it twice.
-  // Push the 3D clear colour to every existing panel. Done for BOTH paths:
-  // at boot (rebuild:false) the geometry is built right after, but the canvas
-  // clear colour must still be set now or the main window keeps its default
-  // background until the next scheme switch.
-  main.renderer.setClearColor(COL.earth, 1);
-  main.invalidate();
-  floats.forEach((f) => { f.panel.renderer.setClearColor(COL.earth, 1); f.panel.invalidate(); });
-
   if (opts.rebuild === false) return;
 
   _fullGeomCache.value = null;                 // palette changed -> invalidate
+  const setClear = (p) => p.renderer.setClearColor(COL.earth, 1);
+  setClear(main);
   main.setGeometry(computeGeometry(meshes, scale, null));
-  floats.forEach((f) => { f.panel.setGeometry(computeGeometry(meshes, scale, f.win)); });
+  floats.forEach((f) => { setClear(f.panel); f.panel.setGeometry(computeGeometry(meshes, scale, f.win)); });
   if (typeof current === "number" && data.nEvents > 0) gotoEvent(current);
 }
 let activeScheme = DEFAULT_SCHEME;
@@ -1028,6 +978,8 @@ if (schemeSel) {
   schemeSel.addEventListener("change", (e) => applyScheme(e.target.value));
 }
 
+const newViewBtn = $("newView");
+if (newViewBtn) newViewBtn.addEventListener("click", () => createFloatingView());
 
 // --- persistence: save / load the whole setup (views, windows, cameras,
 //     options, current event) to and from a JSON file on disk. -------------

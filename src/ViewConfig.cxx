@@ -118,7 +118,10 @@ ViewConfig LoadViewConfig(const std::string& path) {
             candidates.push_back(std::string(prefix) + "/share/sea_cucumber/views/default.toml");
         }
         for (const auto& cand : candidates) {
-            if (std::filesystem::exists(cand)) { p = cand; break; }
+            if (std::filesystem::exists(cand)) {
+                p = cand;
+                break;
+            }
         }
         if (p.empty()) {
             std::cerr << "[ViewConfig] no --view given and no default config found; "
@@ -238,8 +241,8 @@ ViewConfig LoadViewConfig(const std::string& path) {
                     v.wmax[ax] = std::max(*a, *b);
                     v.has_window[ax] = true;
                 } else if (a || b) {
-                    std::cerr << "[ViewConfig] region '" << v.name << "': " << kMinKey[ax]
-                              << "/" << kMaxKey[ax]
+                    std::cerr << "[ViewConfig] region '" << v.name << "': " << kMinKey[ax] << "/"
+                              << kMaxKey[ax]
                               << " must be given as a pair -- ignoring the lone value\n";
                 }
             }
@@ -250,14 +253,12 @@ ViewConfig LoadViewConfig(const std::string& path) {
             const bool front = (v.camera == "xy" || v.camera == "yx");
             if (front && !v.has_window[0] && !v.has_window[1]) {
                 if (v.has_window[2]) {
-                    std::cerr << "[ViewConfig] region '" << v.name
-                              << "': camera \"" << v.camera
+                    std::cerr << "[ViewConfig] region '" << v.name << "': camera \"" << v.camera
                               << "\" is a front view (looking along z), which normally selects "
                                  "an x or y slab, but only zmin/zmax were given -- using the z "
                                  "window\n";
                 } else if (v.match.empty()) {
-                    std::cerr << "[ViewConfig] region '" << v.name
-                              << "': camera \"" << v.camera
+                    std::cerr << "[ViewConfig] region '" << v.name << "': camera \"" << v.camera
                               << "\" but no window at all -- set xmin/xmax (or ymin/ymax, or "
                                  "zmin/zmax), or a `match` pattern\n";
                 }
