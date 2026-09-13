@@ -36,6 +36,40 @@ export const SCHEMES = {
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
                "#e3a93c", "#e8cfa0", "#f1debc"],
   },
+  ship_db2: {
+    label: "SHiP dark blue + og colors",
+    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
+    text: "#f1debc", accent: "#e3a93c", hit: "#c64284", vertex: "#eda9c8",
+    geometry: null
+  },
+  ship_db3: {
+    label: "SHiP dark blue + pink",
+    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
+    text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#e3a93c",
+    geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
+               "#e3a0c1", "#eec7db", "#f4d9e6"],
+  },
+  ship_db4: {
+    label: "SHiP dark blue + yellow",
+    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
+    text: "#d3dae8", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#c64284",
+    geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
+               "#ebcd94", "#f0d7aa", "#f1debc"],
+  },
+  ship_db5: {
+    label: "SHiP dark dark blue + pink",
+    bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
+    text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#e3a93c",
+    geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
+               "#e3a0c1", "#eec7db", "#f4d9e6"],
+  },
+  ship_db6: {
+    label: "SHiP dark dark blue + yellow",
+    bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
+    text: "#d3dae8", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#c64284",
+    geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
+               "#ebcd94", "#f0d7aa", "#f1debc"],
+  },
   ship_ht: {
     // "Everything pink", using the palette's pink range: muted/dark pinks for
     // the detector, the brightest palette pink for hits (distinct), palest for
