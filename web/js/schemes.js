@@ -78,16 +78,17 @@ export const SCHEMES = {
       // fifth color: SBT support structure, plates in the spectrometer, muon shield
       // sixth color: some structures within UBT
       // seventh color (additionally added): something at the spectrometer, target?
+      // eighth color (additionally added): spectrometer magnet itself, no UBT this time, so probably some loop over the colors in the string
     label: "SHiP dark dark blue monochrome",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#79eba",
     geometry: ["#20428a", "#365697", "#4b67a2", "#61aad",
-               "#798eba", "#8fa1c5", "#a5b3d0", "#c64284"],
+               "#798eba", "#8fa1c5", "#a5b3d0"],
   },
   ship_light: {
     label: "SHiP light",
     bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
-    text: "#232323", accent: "#e3a93c", hit: "#c64284", vertex: "#c64284",
+    text: "#232323", accent: "#e3a93c", hit: "#081b3c", vertex: "#c64284",
     geometry: ["#fafafa", "#fbfbfb", "#fdfdfd", "#f6f6f6",
                "#fcfcfc", "#f5f5f5"],
   },
