@@ -84,7 +84,7 @@ export const SCHEMES = {
     geometry: ["#333333", "#373737", "#424242", "#464646",
                "#505050", "#555555", "#606060"],
   },
-  ship_light: {
+  ship_light2: {
     label: "SHiP light 2",
     bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
     text: "#232323", accent: "#e3a93c", hit: "#c64284", vertex: "#e3a0c1",
