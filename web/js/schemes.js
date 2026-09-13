@@ -74,15 +74,15 @@ export const SCHEMES = {
     label: "SHiP dark dark blue monochrome",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#79eba",
-    geometry: ["#a5b3d0", "#365697", "#4b67a2", "#617aad",
+    geometry: ["#c64284", "#365697", "#4b67a2", "#617aad",
                "#798eba", "#8fa1c5"],
   },
   ship_light: {
     label: "SHiP light",
     bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
     text: "#232323", accent: "#e3a93c", hit: "#c64284", vertex: "#e3a0c1",
-    geometry: ["#eeeeee", "#dddddd", "#cccccc", "#bbbbbb",
-               "#aaaaaa", "#999999", "#888888"],
+    geometry: ["#eeeeee", "#e7e7e7", "#dddddd", "#d7d7d7",
+               "#cccccc", "#c7c7c7", "#bbbbbb"],
   },
   ship_ht: {
     // "Everything pink", using the palette's pink range: muted/dark pinks for
