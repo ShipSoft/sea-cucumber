@@ -34,6 +34,13 @@ class Panel {
     this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1e6);
     this.controls = new OrbitControls(this.camera, this.canvas);
     this.controls.enableDamping = true;
+    // Right (and left) drag orbit; wheel zooms. Right-orbit means navigation
+    // still works while the Hide/Select tools claim the left button.
+    this.controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE,
+    };
     // Render on demand, not every frame. A flat-out requestAnimationFrame loop
     // over four WebGL contexts pegs the CPU/GPU even when nothing moves (which
     // is what made the page sluggish). Instead we redraw only when the user
@@ -88,7 +95,9 @@ class Panel {
         side: THREE.DoubleSide,
         depthWrite: bk.transparency < 50,
       });
-      this.gGeo.add(new THREE.Mesh(geom, mat));
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.userData.ranges = bk.ranges || null;  // triangle -> volume name, for picking
+      this.gGeo.add(mesh);
     }
     this.box = precomp.box;
     this.invalidate();
@@ -100,13 +109,20 @@ class Panel {
     this.clear(this.gHits);
     this.clear(this.gVertex);
 
-    const hits = (ev.hits || []).filter((h) => !win || hitInWindow(h, win));
-    if (hits.length) {
-      const pos = new Float32Array(hits.length * 3);
-      for (let i = 0; i < hits.length; i++) {
-        pos[3 * i] = hits[i].x * scale - this.offset.x;
-        pos[3 * i + 1] = hits[i].y * scale - this.offset.y;
-        pos[3 * i + 2] = hits[i].z * scale - this.offset.z;
+    // Keep the original hit index so the user's hidden-hit set is consistent
+    // across panels and event refreshes.
+    const kept = [];
+    (ev.hits || []).forEach((h, i) => {
+      if (hiddenHits.has(i)) return;
+      if (win && !hitInWindow(h, win)) return;
+      kept.push(h);
+    });
+    if (kept.length) {
+      const pos = new Float32Array(kept.length * 3);
+      for (let i = 0; i < kept.length; i++) {
+        pos[3 * i] = kept[i].x * scale - this.offset.x;
+        pos[3 * i + 1] = kept[i].y * scale - this.offset.y;
+        pos[3 * i + 2] = kept[i].z * scale - this.offset.z;
       }
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
@@ -114,7 +130,7 @@ class Panel {
         { color: COL.pink, size: this.opts.hitSize, sizeAttenuation: false })));
     }
 
-    if (ev.vertex && (!win || hitInWindow(ev.vertex, win))) {
+    if (ev.vertex && !hiddenVertex && (!win || hitInWindow(ev.vertex, win))) {
       const v = ev.vertex;
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(
@@ -262,6 +278,50 @@ function winFromRegion(rgn) {
   return [ax("x"), ax("y"), ax("z")];
 }
 
+// --- hidden components -----------------------------------------------------
+// Names of geometry volumes the user has hidden (persistent; keyed on the
+// volume's own name so it is independent of the geometry's organisation).
+const hidden = new Set();
+// Per-event hidden hits (indices into the current event's hits) and vertex.
+// These reset when the event changes, since indices are event-specific.
+const hiddenHits = new Set();
+let hiddenVertex = false;
+// Undo stack: each entry records what a single hide operation newly hid.
+const hideUndo = [];
+
+// Rebuild geometry (after the hidden set or palette changes) without refetching.
+function rebuildGeometry() {
+  _fullGeomCache.value = null;
+  main.setGeometry(computeGeometry(meshes, scale, null));
+  floats.forEach((f) => f.panel.setGeometry(computeGeometry(meshes, scale, f.win)));
+}
+// Rebuild the current event across panels (after hiding hits/vertex).
+function refreshEvent() {
+  if (!lastEvent) return;
+  main.setEvent(lastEvent, scale, null);
+  floats.forEach((f) => f.panel.setEvent(lastEvent, scale, f.win || null));
+}
+
+// Undo the most recent hide operation.
+function undoHide() {
+  const a = hideUndo.pop();
+  if (!a) return;
+  let geoChanged = false, evChanged = false;
+  for (const n of a.geo) { hidden.delete(n); geoChanged = true; }
+  for (const i of a.hits) { hiddenHits.delete(i); evChanged = true; }
+  if (a.vertex) { hiddenVertex = false; evChanged = true; }
+  if (geoChanged) rebuildGeometry();
+  if (evChanged) refreshEvent();
+}
+// Restore everything to the default (nothing hidden).
+function restoreDefault() {
+  const hadGeo = hidden.size > 0;
+  const hadEv = hiddenHits.size > 0 || hiddenVertex;
+  hidden.clear(); hiddenHits.clear(); hiddenVertex = false; hideUndo.length = 0;
+  if (hadGeo) rebuildGeometry();
+  if (hadEv) refreshEvent();
+}
+
 // FNV-1a hash of a volume's SUBSYSTEM key, so all volumes in a subsystem map to
 // the same palette colour. Names look like "/SHiP/<subsystem>/.../<volume>";
 // we key on <subsystem> (the segment after the top), else the first segment.
@@ -293,6 +353,7 @@ function computeGeometry(meshes, scale, win) {
   for (const m of meshes) {
     if (!m.vertices || !m.indices) continue;
     if (win && !meshInWindow(m, win)) continue;
+    if (hidden.has(m.name)) continue;   // user-hidden component
     const t = m.transparency || 0;
     // Colour by SUBSYSTEM, not per volume: every volume in a subsystem shares
     // one colour, so a subsystem reads as a single colour rather than a mix.
@@ -306,7 +367,7 @@ function computeGeometry(meshes, scale, win) {
     }
     const key = color + "|" + t;
     let bk = buckets.get(key);
-    if (!bk) { bk = { color, transparency: t, pos: [], idx: [] }; buckets.set(key, bk); }
+    if (!bk) { bk = { color, transparency: t, pos: [], idx: [], ranges: [] }; buckets.set(key, bk); }
     const base = bk.pos.length / 3;
     for (let i = 0; i < m.vertices.length; i += 3) {
       const x = m.vertices[i] * scale - offset[0];
@@ -318,6 +379,9 @@ function computeGeometry(meshes, scale, win) {
       if (z < box.min.z) box.min.z = z; if (z > box.max.z) box.max.z = z;
     }
     for (let i = 0; i < m.indices.length; i++) bk.idx.push(m.indices[i] + base);
+    // Record which volume owns which triangle range, so a raycast hit (by face
+    // index) can be mapped back to the volume name for click-to-hide.
+    bk.ranges.push({ name: m.name || "", endTri: bk.idx.length / 3 });
   }
 
   // Finalise each bucket: typed arrays + normals (computed once via a temp geom).
@@ -332,7 +396,7 @@ function computeGeometry(meshes, scale, win) {
     tmp.computeVertexNormals();
     const normals = tmp.getAttribute("normal").array;
     tmp.dispose();
-    out.push({ color: bk.color, transparency: bk.transparency, positions, normals, indices });
+    out.push({ color: bk.color, transparency: bk.transparency, positions, normals, indices, ranges: bk.ranges });
   }
 
   const result = {
@@ -352,6 +416,7 @@ let scale = 1 / 1000;
 let current = 0;
 let meshes = [];
 let hitSize = 4;   // hit marker size (px), set from the sidebar
+let volumeCentroids = [];  // {name,x,y,z} in mm, for drag-to-hide
 
 const main = new Panel("view-main");
 
@@ -359,6 +424,8 @@ async function gotoEvent(i) {
   const n = data.nEvents;
   if (n <= 0) return;
   current = ((i % n) + n) % n;
+  hiddenHits.clear();   // hit indices are event-specific
+  hiddenVertex = false;
   let ev;
   try {
     ev = await data.loadEvent(current);
@@ -419,13 +486,19 @@ function applyScheme(name, opts = {}) {
 
   // At boot (rebuild:false) the caller builds geometry right after, so we skip
   // the rebuild to avoid doing it twice.
+  // Push the 3D clear colour to every existing panel. Done for BOTH paths:
+  // at boot (rebuild:false) the geometry is built right after, but the canvas
+  // clear colour must still be set now or the main window keeps its default
+  // background until the next scheme switch.
+  main.renderer.setClearColor(COL.earth, 1);
+  main.invalidate();
+  floats.forEach((f) => { f.panel.renderer.setClearColor(COL.earth, 1); f.panel.invalidate(); });
+
   if (opts.rebuild === false) return;
 
   _fullGeomCache.value = null;                 // palette changed -> invalidate
-  const setClear = (p) => p.renderer.setClearColor(COL.earth, 1);
-  setClear(main);
   main.setGeometry(computeGeometry(meshes, scale, null));
-  floats.forEach((f) => { setClear(f.panel); f.panel.setGeometry(computeGeometry(meshes, scale, f.win)); });
+  floats.forEach((f) => { f.panel.setGeometry(computeGeometry(meshes, scale, f.win)); });
   if (typeof current === "number" && data.nEvents > 0) gotoEvent(current);
 }
 let activeScheme = DEFAULT_SCHEME;
@@ -550,7 +623,7 @@ window.addEventListener("keydown", (e) => {
   switch (e.key) {
     case "ArrowLeft":  gotoEvent(current - 1); break;
     case "ArrowRight": gotoEvent(current + 1); break;
-    case "n": createFloatingView(); break;
+    case "n": if (typeof setPickMode === "function") setPickMode(!pickMode); break;
     case "3": t().frame("3d"); break;
     case "s": t().frame("side"); break;
     case "f": t().frame("front"); break;
@@ -561,6 +634,7 @@ window.addEventListener("keydown", (e) => {
     case "+": case "=": setFontScale(fontScale + 0.1); break;
     case "-": case "_": setFontScale(fontScale - 0.1); break;
     case "?": toggleHelp(); break;
+    case "Escape": if (hideMode) setHideMode(false); if (pickMode) setPickMode(false); break;
     default: return;
   }
   e.preventDefault();
@@ -702,6 +776,7 @@ function createFloatingView(opts = {}) {
   const entry = { panel, el, name, win, locked: false, borderColor: null };
   floats.push(entry);
   attachPick(panel);           // allow drawing a sub-region on this view
+  attachHide(panel);           // allow hiding components on this view
   selectView(entry);           // newly created view becomes the selected one
 
   // Selecting: pressing the bar (not the close button / rename field) selects
@@ -953,8 +1028,6 @@ if (schemeSel) {
   schemeSel.addEventListener("change", (e) => applyScheme(e.target.value));
 }
 
-const newViewBtn = $("newView");
-if (newViewBtn) newViewBtn.addEventListener("click", () => createFloatingView());
 
 // --- persistence: save / load the whole setup (views, windows, cameras,
 //     options, current event) to and from a JSON file on disk. -------------
@@ -1155,7 +1228,7 @@ function rectToWindow(panel, x0, y0, x1, y1) {
 // mode; on release it creates a child view of the drawn region from THIS panel.
 function attachPick(panel) {
   panel.canvas.addEventListener("pointerdown", (e) => {
-    if (!pickMode) return;
+    if (!pickMode || e.button !== 0) return;   // left button only; right/middle orbit
     e.preventDefault();
     e.stopPropagation();
     const x0 = e.clientX, y0 = e.clientY;
@@ -1187,7 +1260,152 @@ function attachPick(panel) {
 attachPick(main);
 // Clicking the main view (outside pick mode) deselects any view, so the sidebar
 // controls target the main view again.
-main.canvas.addEventListener("pointerdown", () => { if (!pickMode) selectView(null); });
+main.canvas.addEventListener("pointerdown", () => { if (!pickMode && !hideMode) selectView(null); });
+
+// --- Hide-component tool ---------------------------------------------------
+// A toggle that lets the user click a component to hide it, or drag a box to
+// hide everything whose centre falls inside. Keyed on volume name, so it is
+// agnostic to the geometry's organisation and sensitive only to what's drawn.
+let hideMode = false;
+const hideRay = new THREE.Raycaster();
+
+function setHideMode(on) {
+  hideMode = on;
+  const btn = $("hideMode");
+  if (btn) btn.classList.toggle("is-active", on);
+  document.body.style.cursor = on ? "crosshair" : "";
+}
+const hideBtn = $("hideMode");
+if (hideBtn) hideBtn.addEventListener("click", () => { if (pickMode) setPickMode(false); setHideMode(!hideMode); });
+const undoBtn = $("undoHide");
+if (undoBtn) undoBtn.addEventListener("click", undoHide);
+const restoreBtn = $("restoreDefault");
+if (restoreBtn) restoreBtn.addEventListener("click", restoreDefault);
+
+// Name of the volume under a screen point on `panel` (raycast into its geometry).
+function volumeAtPoint(panel, clientX, clientY) {
+  const rect = panel.canvas.getBoundingClientRect();
+  const ndc = new THREE.Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -(((clientY - rect.top) / rect.height) * 2 - 1)
+  );
+  hideRay.setFromCamera(ndc, panel.camera);
+  const hits = hideRay.intersectObjects(panel.gGeo.children, false);
+  for (const h of hits) {
+    const ranges = h.object.userData.ranges;
+    if (!ranges || h.faceIndex == null) continue;
+    for (const r of ranges) if (h.faceIndex < r.endTri) return r.name;  // ranges are in triangle order
+  }
+  return null;
+}
+
+// Volumes whose centre projects inside a screen rectangle on `panel`.
+function volumesInRect(panel, x0, y0, x1, y1) {
+  const rect = panel.canvas.getBoundingClientRect();
+  const lo = new THREE.Vector2(Math.min(x0, x1), Math.min(y0, y1));
+  const hi = new THREE.Vector2(Math.max(x0, x1), Math.max(y0, y1));
+  const v = new THREE.Vector3();
+  const names = [];
+  for (const c of volumeCentroids) {
+    v.set(c.x * scale - panel.offset.x, c.y * scale - panel.offset.y, c.z * scale - panel.offset.z);
+    v.project(panel.camera);
+    if (v.z < -1 || v.z > 1) continue;               // outside the frustum
+    const sx = rect.left + (v.x * 0.5 + 0.5) * rect.width;
+    const sy = rect.top + (-v.y * 0.5 + 0.5) * rect.height;
+    if (sx >= lo.x && sx <= hi.x && sy >= lo.y && sy <= hi.y) names.push(c.name);
+  }
+  return names;
+}
+
+// Hit indices (into lastEvent.hits) and vertex whose projection falls in a
+// screen rectangle on `panel`.
+function eventObjectsInRect(panel, x0, y0, x1, y1) {
+  const out = { hits: [], vertex: false };
+  if (!lastEvent) return out;
+  const rect = panel.canvas.getBoundingClientRect();
+  const loX = Math.min(x0, x1), hiX = Math.max(x0, x1);
+  const loY = Math.min(y0, y1), hiY = Math.max(y0, y1);
+  const v = new THREE.Vector3();
+  const inRect = (p) => {
+    v.set(p.x * scale - panel.offset.x, p.y * scale - panel.offset.y, p.z * scale - panel.offset.z);
+    v.project(panel.camera);
+    if (v.z < -1 || v.z > 1) return false;
+    const sx = rect.left + (v.x * 0.5 + 0.5) * rect.width;
+    const sy = rect.top + (-v.y * 0.5 + 0.5) * rect.height;
+    return sx >= loX && sx <= hiX && sy >= loY && sy <= hiY;
+  };
+  (lastEvent.hits || []).forEach((h, i) => { if (!hiddenHits.has(i) && inRect(h)) out.hits.push(i); });
+  if (lastEvent.vertex && !hiddenVertex && inRect(lastEvent.vertex)) out.vertex = true;
+  return out;
+}
+// Nearest hit index to a screen point on `panel`, within a pixel threshold.
+function hitNearPoint(panel, clientX, clientY, threshPx = 8) {
+  if (!lastEvent) return -1;
+  const rect = panel.canvas.getBoundingClientRect();
+  const v = new THREE.Vector3();
+  let best = -1, bestD = threshPx * threshPx;
+  (lastEvent.hits || []).forEach((h, i) => {
+    if (hiddenHits.has(i)) return;
+    v.set(h.x * scale - panel.offset.x, h.y * scale - panel.offset.y, h.z * scale - panel.offset.z);
+    v.project(panel.camera);
+    if (v.z < -1 || v.z > 1) return;
+    const sx = rect.left + (v.x * 0.5 + 0.5) * rect.width;
+    const sy = rect.top + (-v.y * 0.5 + 0.5) * rect.height;
+    const d = (sx - clientX) ** 2 + (sy - clientY) ** 2;
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+function attachHide(panel) {
+  panel.canvas.addEventListener("pointerdown", (e) => {
+    if (!hideMode || e.button !== 0) return;   // left button only; right/middle orbit
+    e.preventDefault();
+    e.stopPropagation();
+    const x0 = e.clientX, y0 = e.clientY;
+    rubber.hidden = false;
+    const draw = (x, y) => {
+      rubber.style.left = Math.min(x0, x) + "px";
+      rubber.style.top = Math.min(y0, y) + "px";
+      rubber.style.width = Math.abs(x - x0) + "px";
+      rubber.style.height = Math.abs(y - y0) + "px";
+    };
+    draw(x0, y0);
+    const move = (ev) => draw(ev.clientX, ev.clientY);
+    const up = (ev) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      rubber.hidden = true;
+      const dragged = Math.abs(ev.clientX - x0) > 6 || Math.abs(ev.clientY - y0) > 6;
+      const act = { geo: [], hits: [], vertex: false };
+      if (dragged) {
+        for (const n of volumesInRect(panel, x0, y0, ev.clientX, ev.clientY))
+          if (!hidden.has(n)) { hidden.add(n); act.geo.push(n); }
+        const eo = eventObjectsInRect(panel, x0, y0, ev.clientX, ev.clientY);
+        for (const i of eo.hits) { hiddenHits.add(i); act.hits.push(i); }
+        if (eo.vertex) { hiddenVertex = true; act.vertex = true; }
+      } else {
+        // Single click: a geometry volume under the cursor, else the nearest hit.
+        const n = volumeAtPoint(panel, ev.clientX, ev.clientY);
+        if (n && !hidden.has(n)) { hidden.add(n); act.geo.push(n); }
+        else if (!n) {
+          const hi = hitNearPoint(panel, ev.clientX, ev.clientY);
+          if (hi >= 0) { hiddenHits.add(hi); act.hits.push(hi); }
+        }
+      }
+      if (act.geo.length || act.hits.length || act.vertex) {
+        hideUndo.push(act);
+        if (act.geo.length) rebuildGeometry();
+        if (act.hits.length || act.vertex) refreshEvent();
+      }
+      // Stay in hide mode so several things can be removed in a row.
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }, true);
+}
+attachHide(main);
+
 
 // render loop
 function tick() {
@@ -1218,6 +1436,11 @@ function tick() {
     // before the first geometry build so it is coloured correctly from the off.
     applyScheme((data.ui && data.ui.color_scheme) || DEFAULT_SCHEME, { rebuild: false });
     meshes = await data.loadGeometry();
+    volumeCentroids = meshes.map((m) => {
+      let cx = 0, cy = 0, cz = 0; const n = (m.vertices || []).length / 3 || 1;
+      for (let i = 0; i < (m.vertices || []).length; i += 3) { cx += m.vertices[i]; cy += m.vertices[i + 1]; cz += m.vertices[i + 2]; }
+      return { name: m.name || "", x: cx / n, y: cy / n, z: cz / n };
+    });
     main.setGeometry(computeGeometry(meshes, scale, null));
     main.frame("3d");
     document.querySelector('[data-cam="3d"]').classList.add("is-active");
