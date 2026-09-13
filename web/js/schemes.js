@@ -75,18 +75,19 @@ export const SCHEMES = {
       // second color: box around spectrometer magnet?
       // third color: most of the spectrometer, some small plane in the calo
       // forth color: spectrometer magnet itself? + UBT
+      // fifth color: SBT support structure, plates in the spectrometer, muon shield
     label: "SHiP dark dark blue monochrome",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#79eba",
     geometry: ["#20428a", "#365697", "#4b67a2", "#61aad",
-               "#c64284", "#8fa1c5"],
+               "#798eba", "#c64284"],
   },
   ship_light: {
     label: "SHiP light",
     bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
     text: "#232323", accent: "#e3a93c", hit: "#081b3c", vertex: "#c64284",
-    geometry: ["#fafafa", "#eaeaea", "#e3e3e3", "#eeeeee",
-               "#f7f7f7", "#f3f3f3", "#e7e7e7"],
+    geometry: ["#fafafa", "#fbfbfb", "#fdfdfd", "#f6f6f6",
+               "#f7f7f7", "#f5f5f5"],
   },
   ship_ht: {
     // "Everything pink", using the palette's pink range: muted/dark pinks for
