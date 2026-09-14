@@ -93,9 +93,9 @@ export const SCHEMES = {
   },
   ship_white2: {
     label: "SHiP white beach",
-    bg: "#ffffff", bg2: "#c0c0c0", surface: "#dadada",
+    bg: "#ffffff", bg2: "#c0c0c0", surface: "#f1debc",
     text: "#232323", accent: "#e3a93c", hit: "#20428a", vertex: "#c64284",
-    geometry: ["#fefefe", "#fdfdfd"],
+    geometry: ["#f9f2e4", "#fbf7ee"],
   },
     ship_db7: {
       // first color in geometry: calo + hall
