@@ -43,28 +43,28 @@ export const SCHEMES = {
     geometry: null
   },
   ship_db3: {
-    label: "SHiP dark blue + pink",
+    label: "SHiP dark",
     bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
     text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#e3a93c",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
                "#e3a0c1", "#eec7db", "#f4d9e6"],
   },
   ship_db4: {
-    label: "SHiP dark blue + yellow",
-    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
-    text: "#d3dae8", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#c64284",
-    geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
-               "#ebcd94", "#f0d7aa", "#f1debc"],
-  },
-  ship_db5: {
-    label: "SHiP dark dark blue + pink",
+    label: "SHiP very dark",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#e3a93c",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
                "#e3a0c1", "#eec7db", "#f4d9e6"],
   },
+  ship_db5: {
+    label: "SHiP dark cream",
+    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
+    text: "#d3dae8", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#c64284",
+    geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
+               "#ebcd94", "#f0d7aa", "#f1debc"],
+  },
   ship_db6: {
-    label: "SHiP dark dark blue + yellow",
+    label: "SHiP very dark cream",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#c64284",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
@@ -79,7 +79,7 @@ export const SCHEMES = {
       // sixth color: some structures within UBT
       // seventh color (additionally added): something at the spectrometer, target?
       // eighth color (additionally added): spectrometer magnet itself, no UBT this time, so probably some loop over the colors in the string
-    label: "SHiP dark dark blue monochrome",
+    label: "SHiP blue",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#79eba",
     geometry: ["#798eba", "#365697", "#4b67a2", "#61aad",
@@ -89,8 +89,7 @@ export const SCHEMES = {
     label: "SHiP light",
     bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
     text: "#232323", accent: "#e3a93c", hit: "#081b3c", vertex: "#c64284",
-    geometry: ["#fafafa", "#fbfbfb", "#fdfdfd", "#f6f6f6",
-               "#fcfcfc", "#f5f5f5"],
+    geometry: ["#fdfdfd", "#fbfbfb"],
   },
   ship_ht: {
     // "Everything pink", using the palette's pink range: muted/dark pinks for
