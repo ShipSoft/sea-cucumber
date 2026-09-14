@@ -82,8 +82,8 @@ export const SCHEMES = {
     label: "SHiP dark dark blue monochrome",
     bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
     text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#79eba",
-    geometry: ["#20428a", "#365697", "#4b67a2", "#61aad",
-               "#798eba", "#8fa1c5", "#a5b3d0"],
+    geometry: ["#798eba", "#365697", "#4b67a2", "#61aad",
+               "#20428a", "#8fa1c5", "#a5b3d0"],
   },
   ship_light: {
     label: "SHiP light",
