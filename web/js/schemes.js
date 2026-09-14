@@ -36,39 +36,66 @@ export const SCHEMES = {
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
                "#e3a93c", "#e8cfa0", "#f1debc"],
   },
-  ship_db2: {
-    label: "SHiP dark blue + og colors",
-    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
-    text: "#f1debc", accent: "#e3a93c", hit: "#c64284", vertex: "#eda9c8",
-    geometry: null
-  },
   ship_db3: {
-    label: "SHiP dark",
-    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
-    text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#e3a93c",
+    label: "SHiP night",
+    bg: "#081b3c", bg2: "#0a1528", surface: "#1a3263",
+    text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#d89b29",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
                "#e3a0c1", "#eec7db", "#f4d9e6"],
   },
   ship_db4: {
-    label: "SHiP very dark",
-    bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
-    text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#e3a93c",
+    label: "SHiP midnight",
+    bg: "#0a1528", bg2: "#081b3c", surface: "#081b3c",
+    text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#d89b29",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
                "#e3a0c1", "#eec7db", "#f4d9e6"],
   },
   ship_db5: {
-    label: "SHiP dark cream",
-    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
-    text: "#d3dae8", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#c64284",
+    label: "SHiP night cream",
+    bg: "#081b3c", bg2: "#0a1528", surface: "#1a3263",
+    text: "#d3dae8", accent: "#e3a93c", hit: "#faedf3", vertex: "#e3a0c1",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
-               "#ebcd94", "#f0d7aa", "#f1debc"],
+               "#f0d7aa", "#f1debc", "f3e5c9"],
   },
   ship_db6: {
-    label: "SHiP very dark cream",
-    bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
-    text: "#d3dae8", accent: "#e3a93c", hit: "#e3a0c1", vertex: "#c64284",
+    label: "SHiP midnight cream",
+    bg: "#0a1528", bg2: "#081b3c", surface: "#081b3c",
+    text: "#d3dae8", accent: "#e3a93c", hit: "#faedf3", vertex: "#e3a0c1",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
-               "#ebcd94", "#f0d7aa", "#f1debc"],
+               "#f0d7aa", "#f1debc", "f3e5c9"],
+  },
+  ship_mid: {
+    label: "SHiP light",
+    bg: "#bbbbbb", bg2: "#999999", surface: "#aaaaaa",
+    text: "#111111", accent: "#20428a", hit: "#f3e5c9", vertex: "#e0af54",
+    geometry: ["#365697", "#20428a", "#617aad", "#798eba",
+               "#d87aa8", "#c64284", "#e3a0c1"],
+  },
+  ship_mid2: {
+    label: "SHiP dark",
+    bg: "#424242", bg2: "#606060", surface: "#686868",
+    text: "#faedf3", accent: "#e3a0c1", hit: "#f3e5c9", vertex: "#e3a93c",
+    geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
+               "#e3a0c1", "#eec7db", "#f4d9e6"],
+  },
+  ship_mid3: {
+    label: "SHiP dark sea",
+    bg: "#424242", bg2: "#606060", surface: "#686868",
+    text: "#f3f5f9", accent: "#e8ecf3", hit: "#e8ecf3", vertex: "#a5b3d0",
+    geometry: ["#617aad", "#798eba", "#365697", "#4b67a2",
+               "#20428a", "#a5b3d0"],
+  },
+  ship_white: {
+    label: "SHiP white",
+    bg: "#ffffff", bg2: "#c0c0c0", surface: "#dee3ee",
+    text: "#232323", accent: "#c64284", hit: "#081b3c", vertex: "#c64284",
+    geometry: ["#e8ecf3", "#f3f5f9"],
+  },
+  ship_white2: {
+    label: "SHiP white beach",
+    bg: "#ffffff", bg2: "#c0c0c0", surface: "#dadada",
+    text: "#232323", accent: "#e3a93c", hit: "#20428a", vertex: "#c64284",
+    geometry: ["#fefefe", "#fdfdfd"],
   },
     ship_db7: {
       // first color in geometry: calo + hall
@@ -76,20 +103,14 @@ export const SCHEMES = {
       // third color: most of the spectrometer, some small plane in the calo
       // forth color: spectrometer magnet itself? + UBT
       // fifth color: SBT support structure, plates in the spectrometer, muon shield
-      // sixth color: some structures within UBT
+      // sixth color: some structures within calo
       // seventh color (additionally added): something at the spectrometer, target?
       // eighth color (additionally added): spectrometer magnet itself, no UBT this time, so probably some loop over the colors in the string
     label: "SHiP blue",
-    bg: "#0a1528", bg2: "#081b3c", surface: "#12305f",
-    text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#79eba",
-    geometry: ["#798eba", "#365697", "#4b67a2", "#61aad",
-               "#20428a", "#8fa1c5", "#a5b3d0"],
-  },
-  ship_light: {
-    label: "SHiP light",
-    bg: "#ffffff", bg2: "#c0c0c0", surface: "#bbbbbb",
-    text: "#232323", accent: "#e3a93c", hit: "#081b3c", vertex: "#c64284",
-    geometry: ["#fdfdfd", "#fbfbfb"],
+    bg: "#081b3c", bg2: "#0a1528", surface: "#12305f",
+    text: "#d3dae8", accent: "#8fa1c5", hit: "#e8ecf3", vertex: "#a5b3d0",
+    geometry: ["#617aad", "#20428a", "#365697", "#4b67a2",
+               "#798eba", "#a5b3d0"],
   },
   ship_ht: {
     // "Everything pink", using the palette's pink range: muted/dark pinks for
@@ -97,8 +118,15 @@ export const SCHEMES = {
     // the vertex.
     label: "SHiP pink",
     bg: "#2b0f1e", bg2: "#1c0a14", surface: "#4a1730",
-    text: "#f5d9e6", accent: "#e0359a", hit: "#e0359a", vertex: "#f5cfe0",
+    text: "#f5d9e6", accent: "#c64284", hit: "#e3a0c1", vertex: "#c64284",
     geometry: ["#9e3569", "#b8497e", "#c64284", "#d96ba0", "#e79ac0", "#f0b6d2"],
+  },
+  kcool: {
+    label: "kCool",
+    bg: "#424242", bg2: "#606060", surface: "#4c6364",
+    text: "#c5feff", accent: "#eb40ff", hit: "#7af2f4", vertex: "#cf2be2",
+    geometry: ["#4f94c3", "#4a86c6", "#4a70c5", "#5a5bc4",
+               "#961dc1", "#b321cd", "#7b28c2"],
   },
 
   // --- terminal-style schemes (bg/fg + a picked subset of the 16 colours) ----
