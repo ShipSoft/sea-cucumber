@@ -356,10 +356,6 @@ int main(int argc, char* argv[]) {
     std::cout << "[make_web_data] wrote " << written << " event file(s)\n";
 
     // --- manifest.json ------------------------------------------------------
-    // Include the region definitions so the web client can build the three zoom
-    // panels (Spectrometer / Calorimeter / SND), mirroring the REve views.
-    // Only explicit windows are emitted; name-derived (`match`) regions would
-    // need the geometry scan and are left for the client to ignore for now.
     const std::string mp = outDir + "/manifest.json";
     std::ofstream mj(mp);
     // Both producers emit native mm; the frontends scale. Deriving the web
@@ -379,46 +375,9 @@ int main(int argc, char* argv[]) {
             mj << "\"" << jsonEscape(k) << "\":" << v;
         }
     }
-    mj << "}},\"regions\":[";
-    bool firstR = true;
-    for (const auto& r : view.regions) {
-        if (!r.hasAnyWindow()) continue;  // client can't place a match-only region
-        if (!firstR) mj << ",";
-        firstR = false;
-        mj << "{\"name\":\"" << jsonEscape(r.name) << "\",\"camera\":\"" << jsonEscape(r.camera)
-           << "\",\"window\":{";
-        static const char* kAx[3] = {"x", "y", "z"};
-        bool firstAx = true;
-        for (int ax = 0; ax < 3; ++ax) {
-            if (!r.has_window[ax]) continue;
-            if (!firstAx) mj << ",";
-            firstAx = false;
-            mj << "\"" << kAx[ax] << "\":[" << r.wmin[ax] << "," << r.wmax[ax] << "]";
-        }
-        mj << "}";  // close window
-        // Optional panel layout (CSS px). Emitted only when set, so the client
-        // can fall back to a default cascade otherwise.
-        if (r.panel_x >= 0 || r.panel_y >= 0 || r.panel_w >= 0 || r.panel_h >= 0) {
-            mj << ",\"panel\":{";
-            bool firstP = true;
-            auto emitP = [&](const char* k, double val) {
-                if (val < 0) return;
-                if (!firstP) mj << ",";
-                firstP = false;
-                mj << "\"" << k << "\":" << val;
-            };
-            emitP("x", r.panel_x);
-            emitP("y", r.panel_y);
-            emitP("w", r.panel_w);
-            emitP("h", r.panel_h);
-            mj << "}";
-        }
-        mj << "}";  // close region
-    }
-    mj << "]}\n";
+    mj << "}}}\n";
     mj.close();
-    std::cout << "[make_web_data] manifest.json: " << nEv << " events, geometry.json, "
-              << "regions emitted\n"
+    std::cout << "[make_web_data] manifest.json: " << nEv << " events, geometry.json\n"
               << "[make_web_data] done -> " << outDir << " (serve with: pixi run web)\n";
     return 0;
 }
