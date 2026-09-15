@@ -30,7 +30,9 @@
 #include <TGeoShape.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -200,11 +202,20 @@ int main(int argc, char* argv[]) {
             outDir = nxt();
         else if (a == "--events")
             eventsArg = nxt();
-        else if (a == "--depth")
-            webDepth = std::stoi(nxt());
-        else if (a == "--max-shapes")
-            webMaxShapes = static_cast<std::size_t>(std::stoll(nxt()));
-        else if (a == "-h" || a == "--help") {
+        else if (a == "--depth" || a == "--max-shapes") {
+            const std::string v = nxt();
+            std::int64_t n = 0;
+            try {
+                n = std::stoll(v);
+            } catch (const std::exception&) {
+                std::cerr << "error: " << a << " needs a numeric value (got '" << v << "')\n";
+                return 2;
+            }
+            if (a == "--depth")
+                webDepth = static_cast<int>(n);
+            else
+                webMaxShapes = static_cast<std::size_t>(n);
+        } else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
                          "[--view v.toml] [--out web/data] [--events all|<i>] "
                          "[--depth 4] [--max-shapes 20000]\n";
@@ -218,32 +229,36 @@ int main(int argc, char* argv[]) {
 
     const shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
 
-    // Make the output directory (portable: shell out to mkdir -p).
     // Best-effort: copy the square logo next to the served page so the sidebar
-    // and favicon find it at web/logo/sc.png. outDir is typically web/data, so
-    // the web root is its parent.
+    // and favicon find it at web/logo/sc.png, and mirror the repo's configs/
+    // under web/configs. The sources are relative to the CWD (the repo root in
+    // the pixi tasks); missing sources are silently skipped, like before.
+    namespace fs = std::filesystem;
     {
-        std::string webRoot = outDir;
-        const std::string tail = "/data";
-        if (webRoot.size() >= tail.size() &&
-            webRoot.compare(webRoot.size() - tail.size(), tail.size(), tail) == 0) {
-            webRoot = webRoot.substr(0, webRoot.size() - tail.size());
-        }
-        std::system(("mkdir -p '" + webRoot + "/logo' && cp -f logo/sc.png '" + webRoot +
-                     "/logo/sc.png' 2>/dev/null")
-                        .c_str());
+        // outDir is typically web/data, so the web root is its parent.
+        fs::path webRoot = fs::path(outDir).lexically_normal();
+        if (webRoot.filename() == "data") webRoot = webRoot.parent_path();
+        std::error_code ec;
+        fs::create_directories(webRoot / "logo", ec);
+        fs::copy_file("logo/sc.png", webRoot / "logo" / "sc.png",
+                      fs::copy_options::overwrite_existing, ec);
         // Copy view-setup configs (default_setup etc.) so the served copy under
         // web/configs stays in sync with the repo's configs/.
-        std::system(("mkdir -p '" + webRoot + "/configs' && cp -f configs/*.json '" + webRoot +
-                     "/configs/' 2>/dev/null")
-                        .c_str());
-        // Keep the served VERSION in sync with the repo's.
-        std::system(("cp -f VERSION '" + webRoot + "/VERSION' 2>/dev/null").c_str());
+        fs::create_directories(webRoot / "configs", ec);
+        for (fs::directory_iterator it("configs", ec), end; it != end; it.increment(ec)) {
+            if (it->path().extension() == ".json") {
+                fs::copy_file(it->path(), webRoot / "configs" / it->path().filename(),
+                              fs::copy_options::overwrite_existing, ec);
+            }
+        }
     }
-    std::string mk = "mkdir -p '" + outDir + "'";
-    if (std::system(mk.c_str()) != 0) {
-        std::cerr << "error: cannot create output dir '" << outDir << "'\n";
-        return 1;
+    {
+        std::error_code ec;
+        fs::create_directories(outDir, ec);
+        if (!fs::is_directory(outDir)) {
+            std::cerr << "error: cannot create output dir '" << outDir << "'\n";
+            return 1;
+        }
     }
 
     // --- geometry.json ------------------------------------------------------
@@ -317,7 +332,14 @@ int main(int argc, char* argv[]) {
     const std::int64_t nEv = source.numEvents();
     std::int64_t lo = 0, hi = nEv;
     if (eventsArg != "all") {
-        const std::int64_t one = std::stoll(eventsArg);
+        std::int64_t one = 0;
+        try {
+            one = std::stoll(eventsArg);
+        } catch (const std::exception&) {
+            std::cerr << "error: --events needs 'all' or an event index (got '" << eventsArg
+                      << "')\n";
+            return 2;
+        }
         lo = one;
         hi = one + 1;
     }
