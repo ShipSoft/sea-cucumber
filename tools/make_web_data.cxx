@@ -40,6 +40,7 @@
 #include <utility>
 #include <vector>
 
+#include "ArgParse.h"
 #include "GeoModelGeometrySource.h"
 #include "IEventSource.h"
 #include "RNTupleEventSource.h"
@@ -191,7 +192,7 @@ int main(int argc, char* argv[]) {
     std::size_t webMaxShapes = 20000;  // keep geometry.json a sane size
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
-        auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
+        auto nxt = [&]() { return shipdisp::args::NextValue(argc, argv, i, a.c_str()); };
         if (a == "--geometry")
             geometry = nxt();
         else if (a == "--data")
@@ -202,24 +203,18 @@ int main(int argc, char* argv[]) {
             outDir = nxt();
         else if (a == "--events")
             eventsArg = nxt();
-        else if (a == "--depth" || a == "--max-shapes") {
-            const std::string v = nxt();
-            std::int64_t n = 0;
-            try {
-                n = std::stoll(v);
-            } catch (const std::exception&) {
-                std::cerr << "error: " << a << " needs a numeric value (got '" << v << "')\n";
-                return 2;
-            }
-            if (a == "--depth")
-                webDepth = static_cast<int>(n);
-            else
-                webMaxShapes = static_cast<std::size_t>(n);
-        } else if (a == "-h" || a == "--help") {
+        else if (a == "--depth")
+            webDepth = shipdisp::args::ParseNumber<int>(nxt(), "--depth");
+        else if (a == "--max-shapes")
+            webMaxShapes = shipdisp::args::ParseNumber<std::size_t>(nxt(), "--max-shapes");
+        else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
                          "[--view v.toml] [--out web/data] [--events all|<i>] "
                          "[--depth 4] [--max-shapes 20000]\n";
             return 0;
+        } else {
+            std::cerr << "error: unknown option '" << a << "' (see --help)\n";
+            return 2;
         }
     }
     if (geometry.empty() || dataFile.empty()) {
@@ -320,14 +315,7 @@ int main(int argc, char* argv[]) {
     const std::int64_t nEv = source.numEvents();
     std::int64_t lo = 0, hi = nEv;
     if (eventsArg != "all") {
-        std::int64_t one = 0;
-        try {
-            one = std::stoll(eventsArg);
-        } catch (const std::exception&) {
-            std::cerr << "error: --events needs 'all' or an event index (got '" << eventsArg
-                      << "')\n";
-            return 2;
-        }
+        const std::int64_t one = shipdisp::args::ParseNumber<std::int64_t>(eventsArg, "--events");
         lo = one;
         hi = one + 1;
     }
