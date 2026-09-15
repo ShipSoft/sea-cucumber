@@ -19,6 +19,7 @@
 #include <iostream>
 #include <string>
 
+#include "ArgParse.h"
 #include "GeoModelGeometrySource.h"
 #include "GeometryCache.h"
 #include "ViewConfig.h"
@@ -27,7 +28,7 @@ int main(int argc, char* argv[]) {
     std::string geometry, viewFile, outPrefix = "geocache";
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
-        auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
+        auto nxt = [&]() { return shipdisp::args::NextValue(argc, argv, i, a.c_str()); };
         if (a == "--geometry")
             geometry = nxt();
         else if (a == "--view")
@@ -38,6 +39,9 @@ int main(int argc, char* argv[]) {
             std::cout << "Usage: make_geometry_cache --geometry ship.db "
                          "[--view v.toml] [--out-prefix geocache]\n";
             return 0;
+        } else {
+            std::cerr << "error: unknown option '" << a << "' (see --help)\n";
+            return 2;
         }
     }
     if (geometry.empty()) {

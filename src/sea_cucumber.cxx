@@ -52,6 +52,7 @@
 #include <utility>
 #include <vector>
 
+#include "ArgParse.h"
 #include "EventNavigator.h"
 #include "GeoModelGeometrySource.h"
 #include "GeometryCache.h"
@@ -784,13 +785,7 @@ int main(int argc, char* argv[]) {
     bool inspectAll = false;       // list every instance instead of aggregating
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
-        auto next = [&](const char* n) -> std::string {
-            if (i + 1 >= argc) {
-                std::cerr << "missing value for " << n << "\n";
-                std::exit(2);
-            }
-            return argv[++i];
-        };
+        auto next = [&](const char* n) { return shipdisp::args::NextValue(argc, argv, i, n); };
         if (a == "--geometry") {
             geometry = next("--geometry");
         } else if (a == "--data") {
@@ -802,9 +797,9 @@ int main(int argc, char* argv[]) {
         } else if (a == "--geo-cache") {
             geoCache = next("--geo-cache");
         } else if (a == "--event") {
-            event = std::atoll(next("--event").c_str());
+            event = shipdisp::args::ParseNumber<std::int64_t>(next("--event"), "--event");
         } else if (a == "--scale") {
-            scaleOverride = std::atof(next("--scale").c_str());
+            scaleOverride = shipdisp::args::ParseNumber<double>(next("--scale"), "--scale");
         } else if (a == "--logo") {
             logoDir = next("--logo");
         } else if (a == "--inspect-match") {
@@ -812,9 +807,10 @@ int main(int argc, char* argv[]) {
         } else if (a == "--inspect-all") {
             inspectAll = true;
         } else if (a == "--inspect") {
-            // Optional depth; defaults to 2 when the next token is another flag.
-            if (i + 1 < argc && argv[i + 1][0] != '-') {
-                inspectDepth = std::atoi(next("--inspect").c_str());
+            // Optional depth; defaults to 2 when the next token is another
+            // flag (or missing/empty).
+            if (i + 1 < argc && argv[i + 1][0] != '\0' && argv[i + 1][0] != '-') {
+                inspectDepth = shipdisp::args::ParseNumber<int>(next("--inspect"), "--inspect");
             } else {
                 inspectDepth = 2;
             }
