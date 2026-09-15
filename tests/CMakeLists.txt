@@ -12,3 +12,11 @@ add_test(NAME db_resolution COMMAND test_db_resolution)
 add_executable(test_geometry_cache test_geometry_cache.cpp)
 target_link_libraries(test_geometry_cache PRIVATE sea_cucumber_core)
 add_test(NAME geometry_cache COMMAND test_geometry_cache)
+
+add_executable(test_name_pattern test_name_pattern.cpp)
+target_link_libraries(test_name_pattern PRIVATE sea_cucumber_core)
+add_test(NAME name_pattern COMMAND test_name_pattern)
+
+add_executable(test_view_config test_view_config.cpp)
+target_link_libraries(test_view_config PRIVATE sea_cucumber_core)
+add_test(NAME view_config COMMAND test_view_config)
