@@ -80,8 +80,11 @@ struct RNTupleEventSource::Impl {
     BoundField<std::vector<SHiP::RecParticle>> rec;
     BoundField<SHiP::SimResult> result;
 
-    // Per-event "effective" views: flat field if available, else simResult's
-    // bundle, else the shared empty.
+    // Per-event "effective" views: flat field if bound, else sim_result's
+    // bundle, else the shared empty. The fallback keys on the field being
+    // ABSENT from the file (bind failed), never on it being empty for this
+    // event -- an event with legitimately zero flat hits must not silently
+    // switch to the sim_result bundle.
     const std::vector<SHiP::SimHit>* effHits = &kNoHits;
     const std::vector<SHiP::SimParticle>* effParts = &kNoParticles;
 
@@ -95,8 +98,8 @@ struct RNTupleEventSource::Impl {
         const auto& h = hits.value;
         const auto& p = parts.value;
         const auto& r = result.value;
-        effHits = (h && !h->empty()) ? h.get() : r ? &r->hits : &kNoHits;
-        effParts = (p && !p->empty()) ? p.get() : r ? &r->particles : &kNoParticles;
+        effHits = h ? h.get() : r ? &r->hits : &kNoHits;
+        effParts = p ? p.get() : r ? &r->particles : &kNoParticles;
     }
 };
 
