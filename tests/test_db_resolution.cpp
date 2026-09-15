@@ -13,17 +13,11 @@
 #include <string>
 
 #include "GeoModelGeometrySource.h"
+#include "TestUtil.h"
 
 namespace fs = std::filesystem;
 
 namespace {
-int failures = 0;
-void check(bool ok, const std::string& what) {
-    if (!ok) {
-        std::cerr << "FAIL: " << what << "\n";
-        ++failures;
-    }
-}
 void touch(const fs::path& p) {
     if (p.has_parent_path()) fs::create_directories(p.parent_path());
     std::ofstream(p) << "x";
@@ -32,6 +26,7 @@ void touch(const fs::path& p) {
 
 int main() {
     using shipdisp::ResolveGeometryDbPath;
+    using testutil::check;
 
     // Absolute path is returned unchanged.
     check(ResolveGeometryDbPath("/nowhere/abs.db") == "/nowhere/abs.db", "absolute passthrough");
@@ -57,6 +52,5 @@ int main() {
 
     fs::remove_all(root);
 
-    if (failures == 0) std::cout << "test_db_resolution: OK\n";
-    return failures == 0 ? 0 : 1;
+    return testutil::summary("test_db_resolution");
 }

@@ -12,22 +12,14 @@
 
 #include <cmath>
 #include <cstdio>
-#include <iostream>
 #include <string>
 #include <vector>
 
 #include "GeometryCache.h"
 #include "IGeometrySource.h"
+#include "TestUtil.h"
 
 namespace {
-int failures = 0;
-void check(bool ok, const std::string& what) {
-    if (!ok) {
-        std::cerr << "FAIL: " << what << "\n";
-        ++failures;
-    }
-}
-
 // A provider that emits three boxes at known z positions.
 class FakeSource : public shipdisp::IGeometrySource {
    public:
@@ -45,7 +37,8 @@ class FakeSource : public shipdisp::IGeometrySource {
 }  // namespace
 
 int main() {
-    const std::string path = "test_geocache.root";
+    using testutil::check;
+    const std::string path = testutil::tempPath("test_geocache.root");
 
     {
         FakeSource src;
@@ -81,6 +74,5 @@ int main() {
     }
 
     std::remove(path.c_str());
-    if (failures == 0) std::cout << "test_geometry_cache: OK\n";
-    return failures == 0 ? 0 : 1;
+    return testutil::summary("test_geometry_cache");
 }
