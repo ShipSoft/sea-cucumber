@@ -58,15 +58,10 @@ export class DataSource {
     return (this.manifest && this.manifest.unit_mm_per_scene) || 1000;
   }
 
-  // Region definitions for the right-hand zoom panels, mirroring the REve view
-  // config. Each: { name, camera, window: {x:[lo,hi]|null, y:…, z:…} }. The
-  // client filters geometry and hits into each region's window.
+  // Optional UI settings ([ui] in the view TOML): font_scale, sidebar_width,
+  // color_scheme, fonts.
   get ui() {
     return (this.manifest && this.manifest.ui) || {};
-  }
-
-  get regions() {
-    return (this.manifest && this.manifest.regions) || [];
   }
 
   async loadGeometry() {
