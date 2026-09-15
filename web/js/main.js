@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// main.js -- four-panel sea_cucumber renderer: a main view plus three region
-// views (Spectrometer / Calorimeter / SND), mirroring the REve display. Each
-// panel is a self-contained three.js context (its own scene + camera), so the
-// region panels can show a filtered, recentred subset without touching the
-// others. The C++ side stays the source of truth; this file only renders.
+// main.js -- sea_cucumber renderer: a main view plus user-created floating
+// views. Each panel is a self-contained three.js context (its own scene +
+// camera), so a floating view can show a filtered, recentred subset without
+// touching the others. The C++ side stays the source of truth; this file
+// only renders.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -14,7 +14,6 @@ import { SCHEMES, DEFAULT_SCHEME } from "./schemes.js";
 
 const COL = {
   earth: 0x34240f, // panel background
-  yellow: 0xe3a93c, // detector geometry (fallback)
   pink: 0xc64284, // hits
   pinkLt: 0xeda9c8, // decay vertex
 };
@@ -244,24 +243,20 @@ function meshInWindow(m, win) {
     if (z < lo[2]) lo[2] = z; if (z > hi[2]) hi[2] = z;
   }
   const c = [cx / n, cy / n, cz / n];
+  // Reject volumes much larger than the window on a constrained axis. Mirrors
+  // the REve path's per-side overhang allowance (kOverhangFrac = 0.25 in
+  // sea_cucumber.cxx): 1.5 = 1 + 2 * 0.25 as a total-length cap.
+  const WINDOW_OVERSIZE_FACTOR = 1.5;
   for (let a = 0; a < 3; a++) {
     const w = win[a];
     if (!w) continue;                              // axis unconstrained
     if (c[a] < w[0] || c[a] > w[1]) return false;  // centroid outside
     const winLen = w[1] - w[0];
     const meshLen = hi[a] - lo[a];
-    // Reject volumes much larger than the window on a constrained axis.
-    if (meshLen > 1.5 * winLen + 1e-6) return false;
+    if (meshLen > WINDOW_OVERSIZE_FACTOR * winLen + 1e-6) return false;
   }
   return true;
 }
-// convert a manifest region's window object to the [x,y,z] array form.
-function winFromRegion(rgn) {
-  const w = rgn.window || {};
-  const ax = (k) => (Array.isArray(w[k]) && w[k].length === 2 ? w[k] : null);
-  return [ax("x"), ax("y"), ax("z")];
-}
-
 // FNV-1a hash of a volume's SUBSYSTEM key, so all volumes in a subsystem map to
 // the same palette colour. Names look like "/SHiP/<subsystem>/.../<volume>";
 // we key on <subsystem> (the segment after the top), else the first segment.
@@ -280,7 +275,7 @@ function subsystemHash(name) {
 // reusable across panels (each still uploads to its own GL context, but the CPU
 // merge and normal computation -- the slow part of opening a view -- happen just
 // once). `win` filters + recentres; null => full detector.
-const _fullGeomCache = { key: null, value: null };
+const _fullGeomCache = { value: null };
 function computeGeometry(meshes, scale, win) {
   // Full-detector (null window) is by far the common, expensive case: cache it.
   if (!win && _fullGeomCache.value) return _fullGeomCache.value;
@@ -351,7 +346,6 @@ const data = new DataSource(new URLSearchParams(location.search).get("data") || 
 let scale = 1 / 1000;
 let current = 0;
 let meshes = [];
-let hitSize = 4;   // hit marker size (px), set from the sidebar
 
 const main = new Panel("view-main");
 

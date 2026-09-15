@@ -2,9 +2,9 @@
  * SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
  * SPDX-License-Identifier: LGPL-3.0-or-later
  *
- * sea_cucumber frontend. Four-panel layout (sidebar | main | region column)
- * with the SHiP outreach palette: dark-earth background, yellow detectors,
- * pink event data, cream text.
+ * sea_cucumber frontend (sidebar | main view, plus floating views) with the
+ * SHiP outreach palette: dark-earth background, yellow detectors, pink event
+ * data, cream text.
  */
 
 /* mononoki for the wordmark (and numeric readouts). Drop the woff2 into
@@ -47,7 +47,7 @@
 html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--cream);
   font-family: var(--ui); overflow: hidden; }
 
-/* ---- app grid: sidebar | main | regions -------------------------------- */
+/* ---- app grid: sidebar | main ------------------------------------------ */
 .app {
   display: grid;
   grid-template-columns: var(--side-w) 1fr;
@@ -109,8 +109,6 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
 
 /* ---- panels ------------------------------------------------------------ */
 .main { position: relative; background: var(--earth); overflow: hidden; }
-.regions { display: grid; grid-template-rows: 1fr 1fr 1fr; gap: 6px; background: var(--earth-2); }
-.rpanel { position: relative; background: var(--earth); overflow: hidden; }
 
 .panel__canvas { display: block; width: 100%; height: 100%; }
 .panel__label { position: absolute; top: 8px; left: 10px; font-size: calc(12px * var(--font-scale)); color: var(--ink-dim);
