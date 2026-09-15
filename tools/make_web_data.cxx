@@ -294,24 +294,12 @@ int main(int argc, char* argv[]) {
     try {
         shipdisp::GeoModelGeometrySource src(geometry, opt);
         src.provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
-            // Colour: an explicit per-volume match colour from the config wins;
-            // otherwise pick from a curated palette by hashing the name. It is
-            // blue-dominant (six blues) with a cream and a muted purple worked
-            // in for variety, and deliberately excludes the bright hit pink
-            // (#C64284) so hits stay clearly visible against the geometry.
-            static const char* kPalette[] = {"#0A1F44", "#12305F", "#20428A", "#3A6BBF",
-                                             "#6E97D6", "#A9C4E8", "#E8CFA0", "#7A6A9E"};
-            const std::string matched = view.colorForVolume(name);
-            std::string color = matched;
-            if (matched == view.geometry.default_color) {
-                std::size_t h = 1469598103934665603ull;  // FNV-1a over the name
-                for (char c : name) {
-                    h ^= static_cast<unsigned char>(c);
-                    h *= 1099511628211ull;
-                }
-                color = kPalette[h % (sizeof(kPalette) / sizeof(kPalette[0]))];
-            }
-            const int transp = view.transparencyForVolume(name);
+            // Colour: an explicit per-volume style rule from the config wins;
+            // otherwise ViewConfig's shared fallback palette (the same hash
+            // the REve display uses, so the two displays agree).
+            const shipdisp::SubsystemStyle* st = view.styleForVolume(name);
+            const std::string color = st ? st->color : view.fallbackColorForVolume(name);
+            const int transp = st ? st->transparency : view.geometry.default_transparency;
             if (writeMesh(gj, name, shape, g, color, transp, firstMesh)) {
                 firstMesh = false;
                 ++nMesh;
