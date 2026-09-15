@@ -67,6 +67,10 @@ root_generate_dictionary(
 )
 
 # --- library with the reusable core (so tests can link it too) ---------------
+# The dictionary TU (G__SeaCucumberNav.cxx) is deliberately NOT part of this
+# static library: its self-registration lives in a translation unit nothing
+# references, so a static-library link would drop it and the REve context menu
+# would come up empty. It is compiled into the display executable instead.
 add_library(
     sea_cucumber_core
     STATIC
@@ -76,7 +80,6 @@ add_library(
     src/ViewConfig.cxx
     src/GeometryCache.cxx
     src/EventNavigator.cxx
-    G__SeaCucumberNav.cxx
 )
 
 target_include_directories(
@@ -116,7 +119,7 @@ endif()
 target_compile_options(sea_cucumber_core PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- the executable ----------------------------------------------------------
-add_executable(sea_cucumber src/sea_cucumber.cxx)
+add_executable(sea_cucumber src/sea_cucumber.cxx G__SeaCucumberNav.cxx)
 target_link_libraries(sea_cucumber PRIVATE sea_cucumber_core)
 
 # --- demo-event generator (writes a synthetic events RNTuple) ----------------
@@ -134,6 +137,12 @@ include(GNUInstallDirs)
 install(
     TARGETS sea_cucumber make_demo_event make_geometry_cache make_web_data
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+# The navigator dictionary's .pcm is looked up next to the executable at
+# runtime; without it the installed binary loses the right-click menu.
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/G__SeaCucumberNav_rdict.pcm
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(
     DIRECTORY views/
