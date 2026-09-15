@@ -362,8 +362,11 @@ int main(int argc, char* argv[]) {
     // need the geometry scan and are left for the client to ignore for now.
     const std::string mp = outDir + "/manifest.json";
     std::ofstream mj(mp);
+    // Both producers emit native mm; the frontends scale. Deriving the web
+    // scale from the same view knob keeps the two displays in agreement.
     mj << "{\"nEvents\":" << nEv << ",\"geometry\":\"geometry.json\","
-       << "\"unit_mm_per_scene\":1000,\"ui\":{\"font_scale\":" << view.ui_font_scale;
+       << "\"unit_mm_per_scene\":" << (1.0 / view.hit_scale)
+       << ",\"ui\":{\"font_scale\":" << view.ui_font_scale;
     if (view.ui_sidebar_width > 0) mj << ",\"sidebar_width\":" << view.ui_sidebar_width;
     if (!view.ui_color_scheme.empty())
         mj << ",\"color_scheme\":\"" << jsonEscape(view.ui_color_scheme) << "\"";
