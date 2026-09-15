@@ -15,7 +15,7 @@ requires-pixi = ">=0.68"
 
 [tasks]
 # `pixi run build` configures then builds; `configure` runs automatically.
-configure = "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=$CONDA_PREFIX"
+configure = "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX"
 build = { cmd = "cmake --build build -j", depends-on = ["configure"] }
 install = { cmd = "cmake --install build", depends-on = ["build"] }
 # `pixi run test` builds (incl. tests) then runs CTest.
@@ -79,21 +79,29 @@ SHIPGEOMETRY_ROOT = "$CONDA_PREFIX"
 [feature.lint.dependencies]
 prek = "*"
 python = ">=3.11"
-clang-format = "22.*"
+clang-format = "23.*"
 codespell = "*"
 cmakelint = "*"
 reuse = "*"
 cffconvert = "*"
 commitizen = "*"
 
+# Pinned via PyPI to match the other SHiP repos exactly: conda-forge's cpplint
+# is stuck at 1.6.0 (a different, stale fork).
 [feature.lint.pypi-dependencies]
 cpplint = "==2.0.2"
-gersemi = "==0.27.7"
+gersemi = "==0.28.1"
 
 [feature.lint.tasks]
 # `pixi run lint` (pixi auto-selects the lint environment for this task).
 lint = "prek run --all-files"
-install-hooks = "prek install --hook-type pre-commit --hook-type commit-msg"
+install-hooks = '''
+prek install --hook-type pre-commit --hook-type commit-msg
+hooks=$(git rev-parse --git-path hooks)
+for h in pre-commit commit-msg; do
+  sed -i 's#"$PREK" hook-impl#pixi run -e lint prek hook-impl#' "$hooks/$h"
+done
+'''
 
 [environments]
 lint = { features = ["lint"], solve-group = "lint" }

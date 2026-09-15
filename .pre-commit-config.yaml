@@ -1,39 +1,82 @@
 # SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
 # SPDX-License-Identifier: LGPL-3.0-or-later
-# Hooks run via `prek` (see pixi.toml [feature.lint]); tool versions are pinned
-# in pixi, so hooks invoke the environment-provided tools as system commands.
+
+# Run with prek (https://github.com/j178/prek), a drop-in pre-commit replacement.
+# The hook tools are provided by the pixi `lint` environment (see pixi.toml), so
+# versions are tracked in pixi.lock and the hooks run identically everywhere.
+#
+#   pixi run install-hooks   # one-off: install the git hooks
+#   pixi run lint            # run all hooks on all files
 repos:
+  # prek runs these as native Rust builtins (no environment, fully portable).
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^web/vendor/
+      - id: end-of-file-fixer
+        exclude: ^web/vendor/
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+        # the vendored three.js module build is ~650 kB
+        exclude: ^web/vendor/
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Tools below come from the pixi `lint` environment via language: system.
   - repo: local
     hooks:
       - id: clang-format
         name: clang-format
-        entry: clang-format -i
         language: system
+        entry: clang-format -i
         types_or: [c++, c]
+
       - id: cpplint
         name: cpplint
+        language: system
         entry: cpplint
-        language: system
-        types_or: [c++]
-      - id: gersemi
-        name: gersemi
-        entry: gersemi -i
-        language: system
-        files: (CMakeLists\.txt|\.cmake)$
-      - id: cmakelint
-        name: cmakelint
-        entry: cmakelint --linelength=100
-        language: system
-        files: (CMakeLists\.txt|\.cmake)$
+        types: [c++]
+
       - id: codespell
         name: codespell
-        entry: codespell -L gaus,astroid
         language: system
-        # web/vendor holds the minified three.js build; its identifiers are
-        # not English and codespell reports dozens of them.
-        exclude: '(pixi\.lock|\.pixi/|build/|^web/vendor/)'
-      - id: reuse
-        name: reuse
-        entry: reuse lint
+        entry: codespell
+        types: [text]
+        exclude: ^(pixi\.lock$|web/vendor/)
+
+      - id: gersemi
+        name: gersemi
         language: system
+        entry: gersemi -i
+        files: (\.cmake|CMakeLists\.txt)$
+
+      - id: cmakelint
+        name: cmakelint
+        language: system
+        entry: cmakelint --linelength=100
+        files: (\.cmake|CMakeLists\.txt)$
+
+      - id: validate-cff
+        name: validate CITATION.cff
+        language: system
+        entry: cffconvert --validate
+        files: ^CITATION\.cff$
         pass_filenames: false
+
+      - id: reuse
+        name: reuse lint
+        language: system
+        entry: reuse lint
+        pass_filenames: false
+        always_run: true
+
+      - id: commitizen
+        name: commitizen (conventional commits)
+        language: system
+        entry: cz check --commit-msg-file
+        stages: [commit-msg]
