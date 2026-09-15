@@ -102,6 +102,16 @@ export const SCHEMES = {
     geometry: ["#365697", "#20428a", "#617aad", "#798eba",
                "#d87aa8", "#c64284", "#e3a0c1"],
   },
+  ship_day2: {
+    // Following SHiP day and SHiP night cream, this is a day version for the cream
+    // theme. Creams shift into the golden part of the range and for visibility the
+    // distribution of hues within the geometry got a bit reshuffled.
+    label: "SHiP day cream",
+    bg: "#bbc6dc", bg2: "#a5b3d0", surface: "#d3dae8",
+    text: "#081b3c", accent: "#20428a", hit: "#faedf3", vertex: "#e3a0c1",
+    geometry: ["#d89b29", "#e4b969", "#617aad", "#798eba",
+               "#20428a", "#365697", "#ebcd94"],
+  },
   ship_dark: {
     // Basically SHiP (mid)night, but with a neutral dark grey background for a
     // cleaner and less playful look, still following the same colour philosophy.
