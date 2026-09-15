@@ -10,6 +10,7 @@
 #include <TGeoMatrix.h>
 #include <TGeoShape.h>
 
+#include <cmath>
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -48,13 +49,16 @@ int main() {
 
     {
         FakeSource src;
-        const std::size_t n = shipdisp::WriteGeometryCache(src, path, "unit test");
+        const std::size_t n = shipdisp::WriteGeometryCache(src, path, 0.01, "unit test");
         check(n == 3, "wrote 3 shapes");
     }
 
     check(shipdisp::CachedGeometrySource::isValidCache(path), "cache is recognised as valid");
     check(!shipdisp::CachedGeometrySource::isValidCache("does_not_exist.root"),
           "missing file is not a valid cache");
+    check(shipdisp::CachedGeometrySource::cachedScale(path) == 0.01, "scale round-trips");
+    check(std::isnan(shipdisp::CachedGeometrySource::cachedScale("does_not_exist.root")),
+          "missing file has no scale");
 
     shipdisp::CachedGeometrySource cache(path);
     std::vector<std::string> names;
