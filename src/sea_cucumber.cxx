@@ -958,13 +958,25 @@ int main(int argc, char* argv[]) {
     // arXiv:2503.00088). Falls back to the live .db otherwise.
     const std::string mainCachePath = geoCache.empty() ? "" : geoCache + ".main.root";
     const std::string regionCachePath = geoCache.empty() ? "" : geoCache + ".region.root";
-    const bool useCache = !geoCache.empty() &&
-                          shipdisp::CachedGeometrySource::isValidCache(mainCachePath) &&
-                          shipdisp::CachedGeometrySource::isValidCache(regionCachePath);
+    bool useCache = !geoCache.empty() &&
+                    shipdisp::CachedGeometrySource::isValidCache(mainCachePath) &&
+                    shipdisp::CachedGeometrySource::isValidCache(regionCachePath);
     if (!geoCache.empty() && !useCache) {
         std::cerr << "[sea_cucumber] geometry cache '" << geoCache
                   << ".{main,region}.root' missing or stale -- falling back to the .db "
                      "(run make_geometry_cache to build it)\n";
+    }
+    if (useCache) {
+        // A cache stores positions already multiplied by the scale it was
+        // written at; replaying it under a different --scale/--view would
+        // silently mis-scale the whole display, so treat that as stale.
+        const double cScale = shipdisp::CachedGeometrySource::cachedScale(mainCachePath);
+        if (!(std::abs(cScale - view.hit_scale) <= 1e-9 * view.hit_scale)) {
+            std::cerr << "[sea_cucumber] geometry cache '" << geoCache << "' was written at scale "
+                      << cScale << " but the current view uses " << view.hit_scale
+                      << " -- falling back to the .db (rebuild with make_geometry_cache)\n";
+            useCache = false;
+        }
     }
 
     try {
