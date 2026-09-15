@@ -948,7 +948,9 @@ int main(int argc, char* argv[]) {
     // guard -- keep it well above what a single sub-detector needs.
     regionOpt.max_shapes = 50000;
 
-    TApplication app("sea_cucumber", &argc, argv);
+    // Our own loop above has already consumed argv; hand ROOT an empty argument
+    // list so TApplication does not re-parse (and warn about) our options.
+    TApplication app("sea_cucumber", nullptr, nullptr);
     shipdisp::EventDisplay ed(view);
     ed.init();
     ed.setSource(&source);
