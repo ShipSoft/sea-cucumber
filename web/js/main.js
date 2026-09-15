@@ -149,9 +149,9 @@ class Panel {
     const d = r * 2.4;
     const dir = ({
       "3d": new THREE.Vector3(1, 0.7, 1),
-      side: new THREE.Vector3(0, 1, 0.0001),   // look along y (xz plane)
+      side: new THREE.Vector3(1, 0.0001, 0),   // look along x (zy, beamline profile)
       front: new THREE.Vector3(0.0001, 0, 1),  // look along z (xy, beam's-eye)
-      top: new THREE.Vector3(0, 1, 0.0001),
+      top: new THREE.Vector3(0, 1, 0.0001),    // look along y (xz, from above)
     }[view] || new THREE.Vector3(1, 0.7, 1)).normalize();
     this.camera.position.copy(c).addScaledVector(dir, d);
     this.camera.up.set(0, view === "top" ? 0 : 1, view === "top" ? -1 : 0);
