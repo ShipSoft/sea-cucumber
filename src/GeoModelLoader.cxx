@@ -68,6 +68,7 @@
 #include <map>
 #include <memory>
 #include <regex>
+#include <set>
 #include <stdexcept>
 
 namespace shipdisp {
@@ -113,10 +114,10 @@ TGeoHMatrix toTGeo(const GeoTrf::Transform3D& g) {
 //  the extra matrix up to the emit site.
 // -----------------------------------------------------------------------------
 void warnUnsupported(const GeoShape* s) {
-    static std::regex dummy;  // silence -Wunused in case of macro builds
-    (void)dummy;
-    std::cerr << "[GeoModelLoader] unsupported GeoModel shape '"
-              << (s ? s->type() : std::string("<null>"))
+    static std::set<std::string> warned;
+    const std::string type = s ? s->type() : std::string("<null>");
+    if (!warned.insert(type).second) return;
+    std::cerr << "[GeoModelLoader] unsupported GeoModel shape '" << type
               << "' -- skipped (add a case in convertShape())\n";
 }
 
@@ -468,12 +469,9 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
     }
 }
 
-std::vector<std::regex> compile(const std::vector<std::string>& pats, bool icase = false) {
+std::vector<std::regex> compile(const std::vector<std::string>& pats, bool icase) {
     std::vector<std::regex> out;
     out.reserve(pats.size());
-    const auto flags =
-        icase ? (std::regex::ECMAScript | std::regex::icase) : std::regex::ECMAScript;
-    (void)flags;
     for (const auto& s : pats) out.emplace_back(CompileNamePattern(s, icase));
     return out;
 }
@@ -489,8 +487,8 @@ std::size_t WalkGeoModelWorld(const GeoVPhysVol* world, const GeoLoadOptions& op
 
     gLenScale = opt.length_scale;  // mm -> scene for this walk
 
-    const auto incl = compile(opt.include);
-    const auto excl = compile(opt.exclude);
+    const auto incl = compile(opt.include, opt.icase);
+    const auto excl = compile(opt.exclude, opt.icase);
     WalkState st{incl, excl, opt, emit};
 
     walk(world, GeoTrf::Transform3D::Identity(), 0, st);
