@@ -62,7 +62,7 @@ pixi run web        # open http://localhost:8080
 In the browser you get a control sidebar, a main 3D view, and any number of
 floating views you create and shape interactively — draw a region on a view to
 open it as a zoom, resize/stack/lock views, recolour borders, and save or load
-the whole layout. See the [manual](docs/MANUAL.md) for the full interface.
+the whole layout. See the [manual](docs/manual.md) for the full interface.
 
 ## Run — ROOT REve display
 
@@ -73,8 +73,8 @@ pixi run sc --geometry ship_geometry.db --data output.root --view views/default.
 Flags: `--geometry <db>` (required), `--data <root>` (required), `--view <toml>`,
 `--ntuple <name>` (default `events`), `--event <i>`, `--scale <f>`, `--logo <dir>`,
 `--geo-cache <prefix>`. A bare `--geometry` filename is resolved against the CWD,
-then `$SHIPGEOMETRY_ROOT/share/geometry/`, matching aegir. The aliases `sc`,
-`run_event_display`, and `ED` all launch it.
+then `$SHIPGEOMETRY_ROOT/share/geometry/`, matching aegir. The pixi tasks `run`
+and `sc` both launch it.
 
 ## Inspect the geometry
 
@@ -130,16 +130,15 @@ via `include`/`exclude` regexes to keep both viewers responsive.
 
 ## Documentation
 
-- [docs/MANUAL.md](docs/MANUAL.md) — full user and developer reference.
-- [docs/RELEASING.md](docs/RELEASING.md) — versioning and changelog workflow.
+- [docs/manual.md](docs/manual.md) — full user and developer reference.
 
 ## Status
 
 Alpha. Both viewers are usable for day-to-day event inspection; interfaces may
 still change. Known limitations are listed in the release notes and the manual —
-notably that the web frontend loads three.js from a CDN (vendor it locally on
-air-gapped networks), and that the `SHiPGeometryService` binding is still stubbed
-behind `SHIP_USE_GEOMETRY_SERVICE`.
+notably that the `SHiPGeometryService` binding is still stubbed behind
+`SHIP_USE_GEOMETRY_SERVICE`. three.js is vendored (`web/vendor/three/`), so the
+web frontend works offline.
 
 ## Licence
 
