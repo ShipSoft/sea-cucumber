@@ -362,6 +362,9 @@ int main(int argc, char* argv[]) {
     // need the geometry scan and are left for the client to ignore for now.
     const std::string mp = outDir + "/manifest.json";
     std::ofstream mj(mp);
+    // The browser's scene scale is its own, not the REve hit_scale: saved
+    // setups store camera positions in scene units, so changing it would
+    // reframe every existing setup.
     mj << "{\"nEvents\":" << nEv << ",\"geometry\":\"geometry.json\","
        << "\"unit_mm_per_scene\":1000,\"ui\":{\"font_scale\":" << view.ui_font_scale;
     if (view.ui_sidebar_width > 0) mj << ",\"sidebar_width\":" << view.ui_sidebar_width;
