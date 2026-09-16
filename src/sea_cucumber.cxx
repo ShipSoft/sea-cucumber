@@ -42,6 +42,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -57,6 +58,7 @@
 #include "IEventSource.h"
 #include "IGeometrySource.h"
 #include "RNTupleEventSource.h"
+#include "UserConfig.h"
 #include "ViewConfig.h"
 
 namespace REX = ROOT::Experimental;
@@ -775,7 +777,8 @@ void usage(const char* a0) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    std::string geometry, data, viewFile, ntuple, geoCache;
+    std::string geometry, data, viewFile, configFile, ntuple, geoCache;
+    bool noConfig = false;
     std::int64_t event = 0;
     double scaleOverride = -1.0;
     int inspectDepth = -1;         // >=0 => print a geometry inventory and exit
@@ -797,6 +800,10 @@ int main(int argc, char* argv[]) {
             data = next("--data");
         } else if (a == "--view") {
             viewFile = next("--view");
+        } else if (a == "--config") {
+            configFile = next("--config");
+        } else if (a == "--no-config") {
+            noConfig = true;
         } else if (a == "--ntuple") {
             ntuple = next("--ntuple");
         } else if (a == "--geo-cache") {
@@ -827,13 +834,28 @@ int main(int argc, char* argv[]) {
             return 2;
         }
     }
+    // The user config can supply --view / --geometry, so it is read before both
+    // the argument check and the view config; an explicit flag still wins.
+    shipdisp::UserDefaults defaults;
+    shipdisp::ViewConfig view;
+    try {
+        defaults = shipdisp::LoadUserDefaults(configFile, noConfig);
+        if (viewFile.empty()) viewFile = defaults.view;
+        if (geometry.empty()) geometry = defaults.geometry;
+        view = shipdisp::LoadViewConfig(viewFile);
+        shipdisp::ApplyUserConfig(configFile, view, noConfig);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << "\n";
+        return 2;
+    }
+
     // --inspect only needs the geometry.
     if (geometry.empty() || (data.empty() && inspectDepth < 0)) {
         usage(argv[0]);
         return 2;
     }
 
-    shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
+    // Flags beat the config files.
     if (scaleOverride > 0) view.hit_scale = scaleOverride;
     if (!ntuple.empty()) view.ntuple = ntuple;
 
