@@ -105,42 +105,22 @@ int ViewConfig::transparencyForVolume(const std::string& name) const {
     return geometry.default_transparency;
 }
 
-ViewConfig LoadViewConfig(const std::string& path) {
-    ViewConfig c = DefaultViewConfig();
-    std::string p = path;
-    if (p.empty()) {
-        // No explicit --view: fall back to the shipped default config so the
-        // full geometry filters apply without needing --view on every command.
-        // Probe the CWD (pixi runs from the repo root) and the installed data
-        // dir; only if neither is found do we use the built-in defaults.
-        std::vector<std::string> candidates = {"views/default.toml"};
-        if (const char* prefix = std::getenv("CONDA_PREFIX")) {
-            candidates.push_back(std::string(prefix) + "/share/sea_cucumber/views/default.toml");
-        }
-        for (const auto& cand : candidates) {
-            if (std::filesystem::exists(cand)) {
-                p = cand;
-                break;
-            }
-        }
-        if (p.empty()) {
-            std::cerr << "[ViewConfig] no --view given and no default config found; "
-                         "using built-in defaults\n";
-            return c;
-        }
-        std::cerr << "[ViewConfig] no --view given; using '" << p << "'\n";
-    }
-
+// Apply one parsed file on top of `c`. Split out of LoadViewConfig so the user
+// config can be layered onto the view config without a second parser.
+bool OverlayViewConfigFile(const std::string& path, ViewConfig& c, bool ui_only) {
+    // Name the caller in the log, so a broken ~/.config file does not look like
+    // a broken view file.
+    const char* tag = ui_only ? "[UserConfig]" : "[ViewConfig]";
     toml::table tbl;
     try {
-        tbl = toml::parse_file(p);
+        tbl = toml::parse_file(path);
     } catch (const toml::parse_error& e) {
-        std::cerr << "[ViewConfig] could not parse '" << p << "': " << e.description()
-                  << " -- using defaults\n";
-        return c;
+        std::cerr << tag << " could not parse '" << path << "': " << e.description()
+                  << " -- ignoring it\n";
+        return false;
     }
 
-    c.hit_scale = tbl["hit_scale"].value_or(c.hit_scale);
+    // [ui] is read in both modes: it is the one block a *user* config may set.
     if (auto ui = tbl["ui"].as_table()) {
         c.ui_font_scale = (*ui)["font_scale"].value_or(c.ui_font_scale);
         c.ui_sidebar_width = (*ui)["sidebar_width"].value_or(c.ui_sidebar_width);
@@ -151,6 +131,28 @@ ViewConfig LoadViewConfig(const std::string& path) {
             }
         }
     }
+
+    if (ui_only) {
+        // Everything else is the view file's business -- which volumes to draw,
+        // where the zoom regions sit. A config under ~/.config quietly swapping
+        // someone's geometry DB or [[region]] blocks is exactly the "works on my
+        // machine" we want to avoid, so name what we skip and skip it.
+        for (auto&& [k, v] : tbl) {
+            (void)v;
+            const std::string key(k.str());
+            // [defaults] is a user-config block too, but it is read before the
+            // view config even loads (UserConfig.h), not here.
+            if (key != "ui" && key != "defaults") {
+                // Bare keys land here too (hit_scale, ntuple, ...), hence no
+                // [brackets] around the name.
+                std::cerr << "[UserConfig] '" << path << "': ignoring '" << key
+                          << "' -- a user config may only set [ui] and [defaults]\n";
+            }
+        }
+        return true;
+    }
+
+    c.hit_scale = tbl["hit_scale"].value_or(c.hit_scale);
     c.scan_depth = tbl["scan_depth"].value_or(c.scan_depth);
     c.region_depth = tbl["region_depth"].value_or(c.region_depth);
     c.ntuple = tbl["ntuple"].value_or(c.ntuple);
@@ -273,6 +275,36 @@ ViewConfig LoadViewConfig(const std::string& path) {
         if (!rv.empty()) c.regions = rv;
     }
 
+    return true;
+}
+
+ViewConfig LoadViewConfig(const std::string& path) {
+    ViewConfig c = DefaultViewConfig();
+    std::string p = path;
+    if (p.empty()) {
+        // No explicit --view: fall back to the shipped default config so the
+        // full geometry filters apply without needing --view on every command.
+        // Probe the CWD (pixi runs from the repo root) and the installed data
+        // dir; only if neither is found do we use the built-in defaults.
+        std::vector<std::string> candidates = {"views/default.toml"};
+        if (const char* prefix = std::getenv("CONDA_PREFIX")) {
+            candidates.push_back(std::string(prefix) + "/share/sea_cucumber/views/default.toml");
+        }
+        for (const auto& cand : candidates) {
+            if (std::filesystem::exists(cand)) {
+                p = cand;
+                break;
+            }
+        }
+        if (p.empty()) {
+            std::cerr << "[ViewConfig] no --view given and no default config found; "
+                         "using built-in defaults\n";
+            return c;
+        }
+        std::cerr << "[ViewConfig] no --view given; using '" << p << "'\n";
+    }
+
+    if (!OverlayViewConfigFile(p, c, /*ui_only=*/false)) return DefaultViewConfig();
     std::cout << "[ViewConfig] loaded '" << p << "'\n";
     return c;
 }
