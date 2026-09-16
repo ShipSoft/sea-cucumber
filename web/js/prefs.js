@@ -39,7 +39,20 @@ export function loadPrefs() {
     // A cache, not a document: on a version we don't know, start over rather
     // than carry migration code around.
     if (!p || typeof p !== "object" || p.version !== PREFS_VERSION) return {};
-    return p;
+    // Anyone can edit localStorage by hand, so hand back only fields of the
+    // right shape and drop the rest. This checks TYPES; the ranges belong to
+    // the code that applies them (setFontScale clamps the scale), so the
+    // bounds live in one place and cannot drift.
+    const out = { version: PREFS_VERSION };
+    if (typeof p.scheme === "string") out.scheme = p.scheme;   // main.js checks it against SCHEMES
+    if (Number.isFinite(p.font_scale) && p.font_scale > 0) out.font_scale = p.font_scale;
+    if (Number.isFinite(p.sidebar_width) && p.sidebar_width >= 0) out.sidebar_width = p.sidebar_width;
+    if (p.fonts && typeof p.fonts === "object" && !Array.isArray(p.fonts)) {
+      const fonts = {};
+      for (const [k, v] of Object.entries(p.fonts)) if (Number.isFinite(v)) fonts[k] = v;
+      if (Object.keys(fonts).length) out.fonts = fonts;
+    }
+    return out;
   } catch (_) {
     return {};
   }

@@ -31,6 +31,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -192,25 +193,34 @@ int main(int argc, char* argv[]) {
     std::size_t webMaxShapes = 20000;  // keep geometry.json a sane size
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
-        auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
+        // A flag with no value is an error, not an empty string: "--config" with
+        // nothing after it would otherwise fall back to the config search, and
+        // "--depth" would reach std::stoi(""). Same as next() in sea_cucumber.cxx.
+        auto nxt = [&](const char* flag) -> std::string {
+            if (i + 1 >= argc) {
+                std::cerr << "missing value for " << flag << "\n";
+                std::exit(2);
+            }
+            return argv[++i];
+        };
         if (a == "--geometry")
-            geometry = nxt();
+            geometry = nxt("--geometry");
         else if (a == "--data")
-            dataFile = nxt();
+            dataFile = nxt("--data");
         else if (a == "--view")
-            viewFile = nxt();
+            viewFile = nxt("--view");
         else if (a == "--config")
-            configFile = nxt();
+            configFile = nxt("--config");
         else if (a == "--no-config")
             noConfig = true;
         else if (a == "--out")
-            outDir = nxt();
+            outDir = nxt("--out");
         else if (a == "--events")
-            eventsArg = nxt();
+            eventsArg = nxt("--events");
         else if (a == "--depth")
-            webDepth = std::stoi(nxt());
+            webDepth = std::stoi(nxt("--depth"));
         else if (a == "--max-shapes")
-            webMaxShapes = static_cast<std::size_t>(std::stoll(nxt()));
+            webMaxShapes = static_cast<std::size_t>(std::stoll(nxt("--max-shapes")));
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
                          "[--view v.toml] [--config c.toml] [--no-config] "
