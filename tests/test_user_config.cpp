@@ -16,6 +16,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include "UserConfig.h"
@@ -37,6 +38,17 @@ void write(const fs::path& p, const std::string& body) {
     std::ofstream(p) << body;
 }
 
+/// Restore the working directory however we leave main(). The candidate list
+/// includes ./sea_cucumber.toml, so the test has to own its CWD; a stray config
+/// in whatever directory ctest ran from would otherwise change the answer.
+struct CwdGuard {
+    fs::path saved = fs::current_path();
+    ~CwdGuard() {
+        std::error_code ec;
+        fs::current_path(saved, ec);
+    }
+};
+
 /// Index of `needle` in `hay`, or -1. Used to assert relative precedence
 /// without hard-coding the full candidate list.
 int indexOf(const std::vector<std::string>& hay, const std::string& needle) {
@@ -54,6 +66,9 @@ int main() {
 
     const fs::path root = fs::temp_directory_path() / "sc_user_config";
     fs::remove_all(root);
+    const CwdGuard cwd;
+    fs::create_directories(root / "cwd");
+    fs::current_path(root / "cwd");
     const fs::path home = root / "home";
     const fs::path xdgHome = root / "xdg";
     const fs::path sysA = root / "etc-a";
@@ -184,6 +199,7 @@ int main() {
         check(view.ui_color_scheme == "ship_original", "unparsable config is skipped");
     }
 
+    fs::current_path(cwd.saved);
     fs::remove_all(root);
 
     if (failures == 0) std::cout << "test_user_config: OK\n";
