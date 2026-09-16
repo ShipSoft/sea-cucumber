@@ -471,8 +471,11 @@ function categorySize(key) {
   const v = getComputedStyle(document.documentElement).getPropertyValue("--fs-" + key);
   return Math.round(parseFloat(v)) || 13;
 }
+// Also the min and max on the size inputs in the text dialog.
+const FS_MIN = 6, FS_MAX = 72;
 function setCategorySize(key, px) {
-  document.documentElement.style.setProperty("--fs-" + key, Math.max(6, px) + "px");
+  document.documentElement.style.setProperty(
+    "--fs-" + key, Math.min(FS_MAX, Math.max(FS_MIN, px)) + "px");
   fitPanels();
 }
 // Back to the value in app.css. setCategorySize can only set, and Revert has to
@@ -485,8 +488,14 @@ function sidebarWidth() {
   return Math.round(parseFloat(getComputedStyle(document.documentElement)
     .getPropertyValue("--side-w"))) || 232;
 }
+// The menu may be anything from collapsed to the full window width. Every route
+// in -- the drag handle, the config, this browser's stored width -- is held to
+// that range here, so a stored value from another screen (or a hand-edited one)
+// cannot push the sidebar, and the buttons that would undo it, off-screen.
+const SIDE_MIN = 0, sideMax = () => window.innerWidth;
 function setSidebarWidth(px) {
-  document.documentElement.style.setProperty("--side-w", px + "px");
+  const w = Math.min(sideMax(), Math.max(SIDE_MIN, px));
+  document.documentElement.style.setProperty("--side-w", w + "px");
 }
 
 // A numeric font-size dialog: set just this element, or all of its category.
@@ -511,7 +520,7 @@ function showTextDialog(el) {
   const curHex = rgbToHex(getComputedStyle(el).color);
   showPopout("Text style", (body, close) => {
     const catSizeRow = cat
-      ? `<label class="field">all ${cat.label} <input id="tdCatSize" type="number" min="6" max="72" value="${categorySize(cat.key)}"></label>` +
+      ? `<label class="field">all ${cat.label} <input id="tdCatSize" type="number" min="${FS_MIN}" max="${FS_MAX}" value="${categorySize(cat.key)}"></label>` +
         `<div class="popout__actions"><button id="tdCatSizeSet" class="btn">Set all ${cat.label}</button></div>`
       : "";
     const catColRow = cat
@@ -520,7 +529,7 @@ function showTextDialog(el) {
       : "";
     body.innerHTML =
       `<h4 class="popout__sub">Size (px)</h4>` +
-      `<label class="field">this element <input id="tdSize" type="number" min="6" max="72" value="${curSize}"></label>` +
+      `<label class="field">this element <input id="tdSize" type="number" min="${FS_MIN}" max="${FS_MAX}" value="${curSize}"></label>` +
       `<div class="popout__actions"><button id="tdSizeSet" class="btn">Set element</button></div>` +
       catSizeRow +
       `<h4 class="popout__sub">Colour</h4>` +
@@ -532,11 +541,14 @@ function showTextDialog(el) {
 
     // size
     body.querySelector("#tdSizeSet").addEventListener("click", () => {
-      el.style.fontSize = Math.max(6, Number(body.querySelector("#tdSize").value) || curSize) + "px";
+      // This one element only, so it does not go through setCategorySize and
+      // needs the same bounds applied here.
+      const px = Number(body.querySelector("#tdSize").value) || curSize;
+      el.style.fontSize = Math.min(FS_MAX, Math.max(FS_MIN, px)) + "px";
       fitPanels();
     });
     if (cat) body.querySelector("#tdCatSizeSet").addEventListener("click", () => {
-      setCategorySize(cat.key, Math.max(6, Number(body.querySelector("#tdCatSize").value) || categorySize(cat.key)));
+      setCategorySize(cat.key, Number(body.querySelector("#tdCatSize").value) || categorySize(cat.key));
     });
     // colour: keep the picker and the hex field in sync
     const pick = body.querySelector("#tdPick");
@@ -1375,13 +1387,11 @@ function tick() {
 (function () {
   const handle = $("sideResize");
   if (!handle) return;
-  const MIN = 0, MAX = () => window.innerWidth;  // menu can be any width
   handle.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     handle.classList.add("is-dragging");
     const move = (ev) => {
-      const w = Math.min(MAX(), Math.max(MIN, ev.clientX));
-      document.documentElement.style.setProperty("--side-w", w + "px");
+      setSidebarWidth(ev.clientX);   // bounds live in the setter
     };
     const up = () => {
       handle.classList.remove("is-dragging");
