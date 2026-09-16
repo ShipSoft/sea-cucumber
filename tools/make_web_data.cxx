@@ -196,6 +196,9 @@ int main(int argc, char* argv[]) {
         // A flag with no value is an error, not an empty string: "--config" with
         // nothing after it would otherwise fall back to the config search, and
         // "--depth" would reach std::stoi(""). Same as next() in sea_cucumber.cxx.
+        // An explicit `--config ""` gets its own check at the arm below: an empty
+        // path means "unset" everywhere downstream, so only the flag can tell the
+        // two apart.
         auto nxt = [&](const char* flag) -> std::string {
             if (i + 1 >= argc) {
                 std::cerr << "missing value for " << flag << "\n";
@@ -209,9 +212,13 @@ int main(int argc, char* argv[]) {
             dataFile = nxt("--data");
         else if (a == "--view")
             viewFile = nxt("--view");
-        else if (a == "--config")
+        else if (a == "--config") {
             configFile = nxt("--config");
-        else if (a == "--no-config")
+            if (configFile.empty()) {
+                std::cerr << "empty value for --config\n";
+                return 2;
+            }
+        } else if (a == "--no-config")
             noConfig = true;
         else if (a == "--out")
             outDir = nxt("--out");

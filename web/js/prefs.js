@@ -83,10 +83,15 @@ export function patchPrefs(patch) {
   }
 }
 
+// True when the browser no longer remembers anything; false when it still does,
+// so a caller can say so rather than claim a revert that did not happen.
 export function clearPrefs() {
   const s = storage();
-  if (!s) return;
+  if (!s) return false;
   try {
     s.removeItem(PREFS_KEY);
-  } catch (_) { /* nothing we can do, and nothing that matters */ }
+    return true;
+  } catch (_) {
+    return false;   // storage disabled mid-session
+  }
 }
