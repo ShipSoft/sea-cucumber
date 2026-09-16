@@ -31,6 +31,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -41,6 +42,7 @@
 #include "GeoModelGeometrySource.h"
 #include "IEventSource.h"
 #include "RNTupleEventSource.h"
+#include "UserConfig.h"
 #include "ViewConfig.h"
 
 namespace {
@@ -184,7 +186,8 @@ bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape, co
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    std::string geometry, dataFile, viewFile, outDir = "web/data", eventsArg = "all";
+    std::string geometry, dataFile, viewFile, configFile, outDir = "web/data", eventsArg = "all";
+    bool noConfig = false;
     int webDepth = 4;                  // deeper than the envelope pass
     std::size_t webMaxShapes = 20000;  // keep geometry.json a sane size
     for (int i = 1; i < argc; ++i) {
@@ -196,6 +199,10 @@ int main(int argc, char* argv[]) {
             dataFile = nxt();
         else if (a == "--view")
             viewFile = nxt();
+        else if (a == "--config")
+            configFile = nxt();
+        else if (a == "--no-config")
+            noConfig = true;
         else if (a == "--out")
             outDir = nxt();
         else if (a == "--events")
@@ -206,17 +213,37 @@ int main(int argc, char* argv[]) {
             webMaxShapes = static_cast<std::size_t>(std::stoll(nxt()));
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
-                         "[--view v.toml] [--out web/data] [--events all|<i>] "
-                         "[--depth 4] [--max-shapes 20000]\n";
+                         "[--view v.toml] [--config c.toml] [--no-config] "
+                         "[--out web/data] [--events all|<i>] "
+                         "[--depth 4] [--max-shapes 20000]\n"
+                         "  --config     user config to apply over the view's [ui] block;\n"
+                         "               without it the usual paths are searched\n"
+                         "               ($SEA_CUCUMBER_CONFIG, ./sea_cucumber.toml,\n"
+                         "               $XDG_CONFIG_HOME/sea_cucumber/config.toml, ...)\n"
+                         "  --no-config  skip that search entirely\n";
             return 0;
         }
     }
+
+    // The user config can supply --view / --geometry, so it is read first; an
+    // explicit flag still wins. Its [ui] block then lands on top of the view
+    // config, and make_web_data bakes the result into manifest.json.
+    shipdisp::UserDefaults defaults;
+    shipdisp::ViewConfig view;
+    try {
+        defaults = shipdisp::LoadUserDefaults(configFile, noConfig);
+        if (viewFile.empty()) viewFile = defaults.view;
+        view = shipdisp::LoadViewConfig(viewFile);
+        shipdisp::ApplyUserConfig(configFile, view, noConfig);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << "\n";
+        return 2;
+    }
+    if (geometry.empty()) geometry = defaults.geometry;
     if (geometry.empty() || dataFile.empty()) {
         std::cerr << "error: --geometry and --data are required\n";
         return 2;
     }
-
-    const shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
 
     // Make the output directory (portable: shell out to mkdir -p).
     // Best-effort: copy the square logo next to the served page so the sidebar
