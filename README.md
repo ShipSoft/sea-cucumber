@@ -90,12 +90,14 @@ $XDG_CONFIG_HOME/sea_cucumber/config.toml    # default ~/.config/...
 $XDG_CONFIG_DIRS entries, then $CONDA_PREFIX/share/sea_cucumber/config.toml
 ```
 
-Each file that exists is applied in turn, overriding only the keys it sets, on
-top of the view config's `[ui]` block. `--no-config` skips the search.
+Every file that exists is read, working up the list from the bottom, so a file
+nearer the top of it overrides the ones below. Each overrides only the keys it
+sets, and the result lands on top of the view config's `[ui]` block.
+`--no-config` skips the search.
 
 ```toml
 [ui]
-color_scheme = "ship_night"   # any key of SCHEMES in web/js/schemes.js
+color_scheme = "ship_midnight"   # any key of SCHEMES in web/js/schemes.js
 font_scale = 1.1
 [ui.fonts]
 menu = 14

@@ -121,13 +121,26 @@ bool OverlayViewConfigFile(const std::string& path, ViewConfig& c, bool ui_only)
     }
 
     // [ui] is read in both modes: it is the one block a *user* config may set.
-    if (auto ui = tbl["ui"].as_table()) {
-        c.ui_font_scale = (*ui)["font_scale"].value_or(c.ui_font_scale);
-        c.ui_sidebar_width = (*ui)["sidebar_width"].value_or(c.ui_sidebar_width);
-        c.ui_color_scheme = (*ui)["color_scheme"].value_or(c.ui_color_scheme);
-        if (auto fonts = (*ui)["fonts"].as_table()) {
-            for (auto&& [k, v] : *fonts) {
-                if (auto d = v.value<double>()) c.ui_fonts[std::string(k.str())] = *d;
+    // Say something when it is there but is not a table ("ui = ..."), otherwise
+    // a typo is silently ignored; the rest of the file still parses.
+    if (const auto* uiNode = tbl.get("ui")) {
+        const auto* ui = uiNode->as_table();
+        if (!ui) {
+            std::cerr << tag << " '" << path << "': [ui] is not a table -- ignoring it\n";
+        } else {
+            c.ui_font_scale = (*ui)["font_scale"].value_or(c.ui_font_scale);
+            c.ui_sidebar_width = (*ui)["sidebar_width"].value_or(c.ui_sidebar_width);
+            c.ui_color_scheme = (*ui)["color_scheme"].value_or(c.ui_color_scheme);
+            if (const auto* fontsNode = ui->get("fonts")) {
+                const auto* fonts = fontsNode->as_table();
+                if (!fonts) {
+                    std::cerr << tag << " '" << path
+                              << "': [ui.fonts] is not a table -- ignoring it\n";
+                } else {
+                    for (auto&& [k, v] : *fonts) {
+                        if (auto d = v.value<double>()) c.ui_fonts[std::string(k.str())] = *d;
+                    }
+                }
             }
         }
     }
