@@ -12,3 +12,9 @@
   aegir, with aegir-style DB resolution and a `SHiPGeometryService` seam.
 - `GeoModelLoader`: GeoModel world -> TGeo/REve shape translation.
 - TOML view config; pixi build/test/lint tasks.
+- User TOML config for appearance defaults, found along the usual paths
+  (`--config`, `$SEA_CUCUMBER_CONFIG`, the CWD, `$XDG_CONFIG_HOME`,
+  `$XDG_CONFIG_DIRS`, `$CONDA_PREFIX`) and layered over the view config's
+  `[ui]` block; `--no-config` opts out.
+- Web frontend: "Set as default" and "Revert" under Colour scheme, remembering
+  the scheme, text sizes and menu width in the browser.
