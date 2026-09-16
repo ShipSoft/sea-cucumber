@@ -1027,7 +1027,12 @@ if (schemeDefaultBtn) schemeDefaultBtn.addEventListener("click", () => {
 // back, live -- no reload needed.
 const schemeRevertBtn = $("schemeRevert");
 if (schemeRevertBtn) schemeRevertBtn.addEventListener("click", () => {
-  clearPrefs();
+  // Nothing changes unless the browser actually forgot: reverting the live
+  // appearance while the stored one survives would come back on the next reload.
+  if (!clearPrefs()) {
+    setStatus("This browser won't let the page forget its settings.");
+    return;
+  }
   document.documentElement.style.removeProperty("--font-scale");
   document.documentElement.style.removeProperty("--side-w");
   for (const c of FONT_CATEGORIES) resetCategorySize(c.key);

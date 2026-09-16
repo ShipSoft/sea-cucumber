@@ -802,6 +802,10 @@ int main(int argc, char* argv[]) {
             viewFile = next("--view");
         } else if (a == "--config") {
             configFile = next("--config");
+            if (configFile.empty()) {
+                std::cerr << "empty value for --config\n";
+                return 2;
+            }
         } else if (a == "--no-config") {
             noConfig = true;
         } else if (a == "--ntuple") {
