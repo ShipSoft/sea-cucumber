@@ -19,22 +19,58 @@
 
 export const SCHEMES = {
   // --- SHiP palette variants -------------------------------------------------
-  // The detector palette uses EVERY palette colour except pink (reserved for
-  // hits): navy, the blue range, the gold range, and cream. ship_original and
-  // ship_db share it and differ only in background (brown vs dark blue). Pink
-  // is the hit colour; light pink the vertex.
+  // ship_original uses EVERY palette colour except pink for the detector: navy,
+  // the blue range, the gold range, and cream. Pink is the hit colour, light
+  // pink the vertex.
+  //
+  // The other ship_* schemes do it the other way round, because pink hits are
+  // hard to pick out. Hits take the lightest colour of whichever range the
+  // scheme is built from -- the darkest, for the light schemes -- and the
+  // vertex takes something that still shows but asks for less attention. The
+  // mood of a scheme comes from its background first, then from the geometry
+  // colours and how they play against hit and vertex; accent and surface follow
+  // from there.
   ship_original: {
     label: "SHiP original",
     bg: "#34240f", bg2: "#241809", surface: "#45301a",
     text: "#f1debc", accent: "#e3a93c", hit: "#c64284", vertex: "#eda9c8",
     geometry: null,
   },
-  ship_db: {
-    label: "SHiP dark blue",
-    bg: "#081b3c", bg2: "#050f22", surface: "#12305f",
-    text: "#f1debc", accent: "#e3a93c", hit: "#c64284", vertex: "#eda9c8",
+  ship_midnight: {
+    // Background is darker than anything in the palette, which pushes the navy
+    // down into the wells and up onto the raised surfaces. The detector stays
+    // in the blue and light pink ranges, so the cream hits read as lights in
+    // the dark.
+    label: "SHiP midnight",
+    bg: "#0a1528", bg2: "#081b3c", surface: "#081b3c",
+    text: "#d3dae8", accent: "#e3a0c1", hit: "#f1debc", vertex: "#d89b29",
     geometry: ["#5a86d0", "#6e97d6", "#8fb3e0", "#a9c4e8",
-               "#e3a93c", "#e8cfa0", "#f1debc"],
+               "#e3a0c1", "#eec7db", "#f4d9e6"],
+  },
+  ship_day: {
+    // The daytime counterpart to SHiP midnight, the same colour language
+    // inverted. Background is a neutral pale blue from the palette; geometry
+    // and accent use the two most characteristic palette colours, the blue and
+    // the bright pink, plus a few shades around them. Cream is swapped for an
+    // even lighter version of itself so the hits still carry over the pale
+    // background.
+    label: "SHiP day",
+    bg: "#bbc6dc", bg2: "#a5b3d0", surface: "#d3dae8",
+    text: "#081b3c", accent: "#20428a", hit: "#f3e5c9", vertex: "#e0af54",
+    geometry: ["#365697", "#20428a", "#617aad", "#798eba",
+               "#d87aa8", "#c64284", "#e3a0c1"],
+  },
+  ship_white: {
+    // A very clean theme using a white background was requested. Apart from the
+    // white most colours are greys or close to greys from the palette. Hits use
+    // the navy from the main colours, the vertex uses the bright pink. Making
+    // anything look good and work as an event display over a white background
+    // is hard, but those work out. As the pink adds a tiny touch of
+    // playfulness, the accent colour follows.
+    label: "SHiP white",
+    bg: "#ffffff", bg2: "#c0c0c0", surface: "#dee3ee",
+    text: "#232323", accent: "#c64284", hit: "#081b3c", vertex: "#c64284",
+    geometry: ["#e8ecf3", "#f3f5f9"],
   },
   ship_ht: {
     // "Everything pink", using the palette's pink range: muted/dark pinks for
