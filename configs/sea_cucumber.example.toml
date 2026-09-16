@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# Example sea_cucumber user configuration. This is *your* file: how the display
+# should look to you. What to draw and where the zoom regions sit stays in the
+# view config (views/*.toml), which is meant to be shared.
+#
+# Copy it to one of the places the tools look, highest precedence first:
+#
+#   --config <path>                               (explicit; must exist)
+#   $SEA_CUCUMBER_CONFIG                          (explicit; warns if missing)
+#   ./sea_cucumber.toml                           (project-local)
+#   $XDG_CONFIG_HOME/sea_cucumber/config.toml     (default ~/.config/...)
+#   /etc/xdg/sea_cucumber/config.toml             (and the rest of $XDG_CONFIG_DIRS)
+#   $CONDA_PREFIX/share/sea_cucumber/config.toml  (shipped baseline)
+#
+# Every file that exists is applied, in that order, each overriding only the
+# keys it sets -- so a config with one [ui.fonts] entry leaves the others alone.
+# The result lands on top of the view config's [ui] block. Pass --no-config to
+# skip the search.
+#
+# In the browser you can override all of this again from the sidebar, under
+# "Colour scheme": "Set as default" remembers your choice in that browser,
+# "Revert" drops it and falls back to this file.
+
+[ui]
+# Any key of SCHEMES in web/js/schemes.js -- ship_original, ship_night,
+# ship_day, dracula, ... An unknown name falls back to ship_original.
+color_scheme = "ship_night"
+
+# Multiplier on every text category. Also live with + / - in the browser.
+font_scale = 1.1
+
+# Menu width in CSS pixels. Also draggable in the browser.
+sidebar_width = 260
+
+# Base sizes (px) per text category. Right-click a label in the browser to see
+# which category it belongs to.
+[ui.fonts]
+menu = 14
+heading = 14
+# window_title = 13
+# dialog = 13
+# brand = 15
+
+# Flags you would otherwise type on every command. A real --view / --geometry
+# still wins.
+# [defaults]
+# view = "views/default.toml"
+# geometry = "ship_geometry.db"

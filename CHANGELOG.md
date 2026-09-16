@@ -18,3 +18,9 @@
   display (e.g. aegir's `event_header`): each displayed collection is read
   through its own `RNTupleView`, so other fields are never reconstructed and
   need no dictionary (#35).
+- User TOML config for appearance defaults, found along the usual paths
+  (`--config`, `$SEA_CUCUMBER_CONFIG`, the CWD, `$XDG_CONFIG_HOME`,
+  `$XDG_CONFIG_DIRS`, `$CONDA_PREFIX`) and layered over the view config's
+  `[ui]` block; `--no-config` opts out.
+- Web frontend: "Set as default" and "Revert" under Colour scheme, remembering
+  the scheme, text sizes and menu width in the browser.
