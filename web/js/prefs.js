@@ -58,13 +58,13 @@ export function loadPrefs() {
   }
 }
 
+// "Does this browser remember anything we would actually apply?" -- the same
+// question loadPrefs answers, so a record it rejects (unknown version, fields of
+// the wrong shape) cannot make the page claim an appearance it never used. The
+// version marker rides along in every non-empty result, so it does not count.
 export function hasPrefs() {
-  const s = storage();
-  try {
-    return !!(s && s.getItem(PREFS_KEY));
-  } catch (_) {
-    return false;
-  }
+  const { version, ...prefs } = loadPrefs();
+  return Object.keys(prefs).length > 0;
 }
 
 // Merge `patch` into what is already stored. `fonts` merges one level deeper so
