@@ -10,7 +10,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { DataSource } from "./data.js";
-import { SCHEMES, DEFAULT_SCHEME } from "./schemes.js";
+import { SCHEMES, DEFAULT_SCHEME, schemeOf } from "./schemes.js";
 import { loadPrefs, patchPrefs, clearPrefs, hasPrefs } from "./prefs.js";
 
 const COL = {
@@ -401,8 +401,8 @@ function applyScheme(name, opts = {}) {
   // Schemes get renamed; a key out of an older config or an older browser
   // store must not leave activeScheme and the dropdown pointing at a scheme
   // that no longer exists, so resolve it once and use that everywhere.
-  const key = SCHEMES[name] ? name : DEFAULT_SCHEME;
-  const s = SCHEMES[key];
+  const key = schemeOf(name) ? name : DEFAULT_SCHEME;
+  const s = schemeOf(key);
   const r = document.documentElement.style;
   r.setProperty("--earth", s.bg);
   r.setProperty("--earth-2", s.bg2 || s.bg);
@@ -996,7 +996,8 @@ if (schemeSel) {
 }
 
 function schemeLabel(key) {
-  return (SCHEMES[key] && SCHEMES[key].label) || key;
+  const sc = schemeOf(key);
+  return (sc && sc.label) || key;
 }
 // Star the scheme the page will open in, and say where that came from.
 function refreshSchemeUI() {
@@ -1323,7 +1324,7 @@ function tick() {
     // Appearance comes in two layers: the config the producer baked into the
     // manifest, then whatever this browser remembers on top (prefs.js).
     configUi = data.ui || {};
-    configScheme = SCHEMES[configUi.color_scheme] ? configUi.color_scheme : DEFAULT_SCHEME;
+    configScheme = schemeOf(configUi.color_scheme) ? configUi.color_scheme : DEFAULT_SCHEME;
     applyConfigUi();
 
     const prefs = loadPrefs();
@@ -1332,7 +1333,7 @@ function tick() {
     if (prefs.fonts) {
       for (const [k, v] of Object.entries(prefs.fonts)) setCategorySize(k, v);
     }
-    defaultScheme = SCHEMES[prefs.scheme] ? prefs.scheme : configScheme;
+    defaultScheme = schemeOf(prefs.scheme) ? prefs.scheme : configScheme;
 
     $("evMax").textContent = String(data.nEvents - 1);
 
