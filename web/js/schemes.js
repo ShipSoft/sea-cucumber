@@ -122,3 +122,12 @@ export const SCHEMES = {
 };
 
 export const DEFAULT_SCHEME = "ship_original";
+
+// SCHEMES is an object literal, so it inherits "__proto__", "constructor",
+// "toString" and the rest; a plain SCHEMES[name] test says yes to all of them
+// and hands back Object.prototype, whose roles are all undefined. Names arrive
+// from a config file and from a hand-editable browser store, so ask for an OWN
+// key and let everything else fall back to DEFAULT_SCHEME.
+export function schemeOf(name) {
+  return Object.prototype.hasOwnProperty.call(SCHEMES, name) ? SCHEMES[name] : null;
+}
