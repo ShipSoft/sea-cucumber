@@ -1060,7 +1060,7 @@ if (schemeRevertBtn) schemeRevertBtn.addEventListener("click", () => {
 
 // The [ui] block the producer baked into manifest.json.
 function applyConfigUi() {
-  setFontScale(configUi.font_scale || 1);
+  setFontScale(Number.isFinite(configUi.font_scale) ? configUi.font_scale : 1);
   if (Number.isFinite(configUi.sidebar_width)) setSidebarWidth(configUi.sidebar_width);
   if (configUi.fonts) {
     for (const [k, v] of Object.entries(configUi.fonts)) setCategorySize(k, v);
