@@ -20,7 +20,10 @@
 #include <TGeoShape.h>
 #include <TGeoVolume.h>
 #include <TNamed.h>
+#include <TParameter.h>
 #include <TTree.h>
+
+#include <cmath>
 
 #include <cstdint>
 #include <iostream>
@@ -32,9 +35,10 @@ namespace shipdisp {
 
 namespace {
 constexpr const char* kTreeName = "shapes";
+constexpr const char* kScaleName = "scale";
 }  // namespace
 
-std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path,
+std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path, double scale,
                                const std::string& provenance) {
     std::unique_ptr<TFile> f(TFile::Open(out_path.c_str(), "RECREATE"));
     if (!f || f->IsZombie()) {
@@ -95,6 +99,8 @@ std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path
                               std::to_string(n) + " shapes | " + provenance;
     TNamed marker(kGeometryCacheTag, title.c_str());
     marker.Write();
+    TParameter<double> scaleParam(kScaleName, scale);
+    scaleParam.Write();
 
     f->Close();
     std::cout << "[GeometryCache] wrote " << n << " shapes to '" << out_path << "'\n";
@@ -108,6 +114,13 @@ bool CachedGeometrySource::isValidCache(const std::string& path) {
     if (!marker) return false;
     const std::string title = marker->GetTitle();
     return title.rfind(std::string("v") + std::to_string(kGeometryCacheVersion) + " ", 0) == 0;
+}
+
+double CachedGeometrySource::cachedScale(const std::string& path) {
+    std::unique_ptr<TFile> f(TFile::Open(path.c_str(), "READ"));
+    if (!f || f->IsZombie()) return std::nan("");
+    auto* p = dynamic_cast<TParameter<double>*>(f->Get(kScaleName));
+    return p ? p->GetVal() : std::nan("");
 }
 
 std::size_t CachedGeometrySource::provide(const GeoEmit& emit) {
