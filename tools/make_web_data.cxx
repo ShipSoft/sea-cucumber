@@ -31,6 +31,8 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -41,6 +43,7 @@
 #include "GeoModelGeometrySource.h"
 #include "IEventSource.h"
 #include "RNTupleEventSource.h"
+#include "UserConfig.h"
 #include "ViewConfig.h"
 
 namespace {
@@ -184,39 +187,80 @@ bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape, co
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    std::string geometry, dataFile, viewFile, outDir = "web/data", eventsArg = "all";
+    std::string geometry, dataFile, viewFile, configFile, outDir = "web/data", eventsArg = "all";
+    bool noConfig = false;
     int webDepth = 4;                  // deeper than the envelope pass
     std::size_t webMaxShapes = 20000;  // keep geometry.json a sane size
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
-        auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
+        // A flag with no value is an error, not an empty string: "--config" with
+        // nothing after it would otherwise fall back to the config search, and
+        // "--depth" would reach std::stoi(""). Same as next() in sea_cucumber.cxx.
+        // An explicit `--config ""` gets its own check at the arm below: an empty
+        // path means "unset" everywhere downstream, so only the flag can tell the
+        // two apart.
+        auto nxt = [&](const char* flag) -> std::string {
+            if (i + 1 >= argc) {
+                std::cerr << "missing value for " << flag << "\n";
+                std::exit(2);
+            }
+            return argv[++i];
+        };
         if (a == "--geometry")
-            geometry = nxt();
+            geometry = nxt("--geometry");
         else if (a == "--data")
-            dataFile = nxt();
+            dataFile = nxt("--data");
         else if (a == "--view")
-            viewFile = nxt();
+            viewFile = nxt("--view");
+        else if (a == "--config") {
+            configFile = nxt("--config");
+            if (configFile.empty()) {
+                std::cerr << "empty value for --config\n";
+                return 2;
+            }
+        } else if (a == "--no-config")
+            noConfig = true;
         else if (a == "--out")
-            outDir = nxt();
+            outDir = nxt("--out");
         else if (a == "--events")
-            eventsArg = nxt();
+            eventsArg = nxt("--events");
         else if (a == "--depth")
-            webDepth = std::stoi(nxt());
+            webDepth = std::stoi(nxt("--depth"));
         else if (a == "--max-shapes")
-            webMaxShapes = static_cast<std::size_t>(std::stoll(nxt()));
+            webMaxShapes = static_cast<std::size_t>(std::stoll(nxt("--max-shapes")));
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
-                         "[--view v.toml] [--out web/data] [--events all|<i>] "
-                         "[--depth 4] [--max-shapes 20000]\n";
+                         "[--view v.toml] [--config c.toml] [--no-config] "
+                         "[--out web/data] [--events all|<i>] "
+                         "[--depth 4] [--max-shapes 20000]\n"
+                         "  --config     user config to apply over the view's [ui] block;\n"
+                         "               without it the usual paths are searched\n"
+                         "               ($SEA_CUCUMBER_CONFIG, ./sea_cucumber.toml,\n"
+                         "               $XDG_CONFIG_HOME/sea_cucumber/config.toml, ...)\n"
+                         "  --no-config  skip that search entirely\n";
             return 0;
         }
     }
+
+    // The user config can supply --view / --geometry, so it is read first; an
+    // explicit flag still wins. Its [ui] block then lands on top of the view
+    // config, and make_web_data bakes the result into manifest.json.
+    shipdisp::UserDefaults defaults;
+    shipdisp::ViewConfig view;
+    try {
+        defaults = shipdisp::LoadUserDefaults(configFile, noConfig);
+        if (viewFile.empty()) viewFile = defaults.view;
+        view = shipdisp::LoadViewConfig(viewFile);
+        shipdisp::ApplyUserConfig(configFile, view, noConfig);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << "\n";
+        return 2;
+    }
+    if (geometry.empty()) geometry = defaults.geometry;
     if (geometry.empty() || dataFile.empty()) {
         std::cerr << "error: --geometry and --data are required\n";
         return 2;
     }
-
-    const shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
 
     // Make the output directory (portable: shell out to mkdir -p).
     // Best-effort: copy the square logo next to the served page so the sidebar
@@ -364,7 +408,7 @@ int main(int argc, char* argv[]) {
     std::ofstream mj(mp);
     mj << "{\"nEvents\":" << nEv << ",\"geometry\":\"geometry.json\","
        << "\"unit_mm_per_scene\":1000,\"ui\":{\"font_scale\":" << view.ui_font_scale;
-    if (view.ui_sidebar_width > 0) mj << ",\"sidebar_width\":" << view.ui_sidebar_width;
+    if (view.ui_sidebar_width >= 0) mj << ",\"sidebar_width\":" << view.ui_sidebar_width;
     if (!view.ui_color_scheme.empty())
         mj << ",\"color_scheme\":\"" << jsonEscape(view.ui_color_scheme) << "\"";
     mj << ",\"fonts\":{";

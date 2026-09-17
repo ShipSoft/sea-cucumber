@@ -74,6 +74,7 @@ add_library(
     src/GeoModelLoader.cxx
     src/GeoModelGeometrySource.cxx
     src/ViewConfig.cxx
+    src/UserConfig.cxx
     src/GeometryCache.cxx
     src/EventNavigator.cxx
     G__SeaCucumberNav.cxx
