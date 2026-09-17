@@ -408,7 +408,7 @@ int main(int argc, char* argv[]) {
     std::ofstream mj(mp);
     mj << "{\"nEvents\":" << nEv << ",\"geometry\":\"geometry.json\","
        << "\"unit_mm_per_scene\":1000,\"ui\":{\"font_scale\":" << view.ui_font_scale;
-    if (view.ui_sidebar_width > 0) mj << ",\"sidebar_width\":" << view.ui_sidebar_width;
+    if (view.ui_sidebar_width >= 0) mj << ",\"sidebar_width\":" << view.ui_sidebar_width;
     if (!view.ui_color_scheme.empty())
         mj << ",\"color_scheme\":\"" << jsonEscape(view.ui_color_scheme) << "\"";
     mj << ",\"fonts\":{";

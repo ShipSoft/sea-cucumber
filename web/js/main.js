@@ -485,8 +485,9 @@ function resetCategorySize(key) {
   fitPanels();
 }
 function sidebarWidth() {
-  return Math.round(parseFloat(getComputedStyle(document.documentElement)
-    .getPropertyValue("--side-w"))) || 232;
+  const w = Math.round(parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue("--side-w")));
+  return Number.isFinite(w) ? w : 232;   // 0 is a width: the menu collapsed
 }
 // The menu may be anything from collapsed to the full window width. Every route
 // in -- the drag handle, the config, this browser's stored width -- is held to
@@ -1059,7 +1060,7 @@ if (schemeRevertBtn) schemeRevertBtn.addEventListener("click", () => {
 // The [ui] block the producer baked into manifest.json.
 function applyConfigUi() {
   setFontScale(configUi.font_scale || 1);
-  if (configUi.sidebar_width) setSidebarWidth(configUi.sidebar_width);
+  if (Number.isFinite(configUi.sidebar_width)) setSidebarWidth(configUi.sidebar_width);
   if (configUi.fonts) {
     for (const [k, v] of Object.entries(configUi.fonts)) setCategorySize(k, v);
   }
@@ -1327,7 +1328,7 @@ function tick() {
 
     const prefs = loadPrefs();
     if (prefs.font_scale) setFontScale(prefs.font_scale);
-    if (prefs.sidebar_width) setSidebarWidth(prefs.sidebar_width);
+    if (Number.isFinite(prefs.sidebar_width)) setSidebarWidth(prefs.sidebar_width);
     if (prefs.fonts) {
       for (const [k, v] of Object.entries(prefs.fonts)) setCategorySize(k, v);
     }
