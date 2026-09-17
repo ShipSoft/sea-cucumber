@@ -42,6 +42,7 @@
 #include <string>
 #include <vector>
 
+#include "ArgParse.h"
 #include "GeoModelLoader.h"
 #include "SHiP/MCParticle.hpp"
 #include "SHiP/SimHit.hpp"
@@ -136,21 +137,24 @@ int main(int argc, char* argv[]) {
     double downMinArg = -1;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
+        auto nxt = [&]() { return shipdisp::args::NextValue(argc, argv, i, a.c_str()); };
         if (a == "--geometry")
             geometry = nxt();
         else if (a == "--output")
             output = nxt();
         else if (a == "--events")
-            nEvents = std::atoi(nxt());
+            nEvents = shipdisp::args::ParseNumber<int>(nxt(), "--events");
         else if (a == "--seed")
-            seed = std::atoi(nxt());
+            seed = shipdisp::args::ParseNumber<unsigned>(nxt(), "--seed");
         else if (a == "--down-min")
-            downMinArg = std::atof(nxt());
+            downMinArg = shipdisp::args::ParseNumber<double>(nxt(), "--down-min");
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_demo_event [--geometry ship.db] [--output f.root] "
                          "[--events N] [--seed S] [--down-min mm]\n";
             return 0;
+        } else {
+            std::cerr << "error: unknown option '" << a << "' (see --help)\n";
+            return 2;
         }
     }
 
