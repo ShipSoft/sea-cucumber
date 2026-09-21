@@ -255,7 +255,9 @@ int main(int argc, char* argv[]) {
     {
         std::error_code ec;
         fs::create_directories(outDir, ec);
-        if (!fs::is_directory(outDir)) {
+        // The throwing overload would take the tool down on an unreadable
+        // path; a failed status lookup is just as much a "cannot use it".
+        if (!fs::is_directory(outDir, ec) || ec) {
             std::cerr << "error: cannot create output dir '" << outDir << "'\n";
             return 1;
         }
