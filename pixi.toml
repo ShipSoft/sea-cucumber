@@ -38,8 +38,8 @@ geo-cache = { cmd = "./build/make_geometry_cache --out-prefix geocache", depends
 # Point the page at produced data with ?data=... ; see web/README.md.
 # Produce the web display files from a .db + data file into web/data.
 #   pixi run web-data --geometry files/ship_geometry.db --data files/llp_display.root --view views/default.toml
-# (The task bakes in `--out web/data`; call ./build/make_web_data directly for
-# a different output directory.)
+# (The task starts with `--out web/data`; pixi appends what you pass after it
+# and the last --out wins, so `pixi run web-data --out other-dir` works.)
 web-data = { cmd = "./build/make_web_data --out web/data", depends-on = ["build"] }
 web = "python -m http.server 8080 --directory web"
 clean = "bash -c 'rm -rf build geocache.*.root'"
