@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# prek only ever hands the hook git-tracked, type-matched files, so none of
+# these reach it. This guards a hand-run `prettier --write .`.
+pixi.lock
+web/data/
+.pixi/
+build/

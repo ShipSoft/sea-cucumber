@@ -50,7 +50,7 @@ sea_cucumber is a pixi workspace. All workflows go through pixi tasks:
 |------|--------------|
 | `pixi run build` | Configure + compile (CMake + Ninja). |
 | `pixi run test` | Build, then run the CTest suite. |
-| `pixi run lint` | Run the pre-commit hooks (formatting, cpplint, REUSE…). |
+| `pixi run lint` | Run the pre-commit hooks (C++, CMake, web frontend, Python, REUSE…). |
 | `pixi run sea_cucumber …` (aliases `sc`, `run_event_display`, `ED`) | Launch the REve display. |
 | `pixi run web-data …` | Produce the web display files into `web/data`. |
 | `pixi run web` | Serve `web/` at http://localhost:8080. |
