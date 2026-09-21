@@ -14,14 +14,17 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <system_error>
 
 namespace shipdisp::args {
 
 /// The value following flag argv[i]; advances i. Exits when the value is
-/// missing.
+/// missing, including when the next token is another option: no flag takes a
+/// value starting with "--", so `--output --events` is a typo worth stopping
+/// for rather than a file called "--events".
 inline std::string NextValue(int argc, char* argv[], int& i, const char* flag) {
-    if (i + 1 >= argc) {
+    if (i + 1 >= argc || std::string_view(argv[i + 1]).starts_with("--")) {
         std::cerr << "error: " << flag << " needs a value\n";
         std::exit(2);
     }

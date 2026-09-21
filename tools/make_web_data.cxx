@@ -203,9 +203,15 @@ int main(int argc, char* argv[]) {
             outDir = nxt();
         else if (a == "--events")
             eventsArg = nxt();
-        else if (a == "--depth")
+        else if (a == "--depth") {
             webDepth = shipdisp::args::ParseNumber<int>(nxt(), "--depth");
-        else if (a == "--max-shapes")
+            // A negative depth switches GeoModelLoader's bound off altogether,
+            // which is how a typo turns into an unbounded walk.
+            if (webDepth < 0) {
+                std::cerr << "error: --depth cannot be negative\n";
+                return 2;
+            }
+        } else if (a == "--max-shapes")
             webMaxShapes = shipdisp::args::ParseNumber<std::size_t>(nxt(), "--max-shapes");
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
@@ -318,6 +324,13 @@ int main(int argc, char* argv[]) {
     std::int64_t lo = 0, hi = nEv;
     if (eventsArg != "all") {
         const std::int64_t one = shipdisp::args::ParseNumber<std::int64_t>(eventsArg, "--events");
+        // Bound the index before `one + 1`, which overflows at INT64_MAX, and
+        // so that an index past the end reports itself instead of quietly
+        // writing no event at all.
+        if (one < 0 || one >= nEv) {
+            std::cerr << "error: --events " << one << " is outside [0, " << nEv << ")\n";
+            return 2;
+        }
         lo = one;
         hi = one + 1;
     }
