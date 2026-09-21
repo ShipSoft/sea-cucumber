@@ -40,11 +40,13 @@ repos:
         entry: prettier --write --log-level warn
         language: system
         types_or: [javascript, html, css, json, markdown]
+        exclude: '^web/(js/)?vendor/'
       - id: eslint
         name: eslint
         entry: eslint --max-warnings=0
         language: system
         types_or: [javascript]
+        exclude: '^web/(js/)?vendor/'
       - id: stylelint
         name: stylelint
         entry: stylelint
