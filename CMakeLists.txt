@@ -138,10 +138,14 @@ install(
     TARGETS sea_cucumber make_demo_event make_geometry_cache make_web_data
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-# The navigator dictionary's .pcm is looked up next to the executable at
-# runtime; without it the installed binary loses the right-click menu.
+# The navigator dictionary registers itself from the executable, but ROOT
+# still looks for its .pcm next to the binary; without it the installed
+# display loses the right-click menu. rootcling names the pcm after the
+# library the dictionary would belong to, hence the lib prefix. The .rootmap
+# is not installed: it points autoloading at libSeaCucumberNav.so, which is
+# never built.
 install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/G__SeaCucumberNav_rdict.pcm
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/libSeaCucumberNav_rdict.pcm
     DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(
