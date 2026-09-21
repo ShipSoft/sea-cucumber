@@ -351,7 +351,6 @@ const data = new DataSource(new URLSearchParams(location.search).get("data") || 
 let scale = 1 / 1000;
 let current = 0;
 let meshes = [];
-let hitSize = 4;   // hit marker size (px), set from the sidebar
 
 const main = new Panel("view-main");
 
@@ -413,7 +412,6 @@ function applyScheme(name, opts = {}) {
   COL.pink = hexToInt(s.hit);
   COL.pinkLt = hexToInt(s.vertex);
   schemeGeometry = s.geometry || null;
-  activeScheme = name;
   const sel = $("scheme");
   if (sel && sel.value !== name) sel.value = name;
 
@@ -428,7 +426,6 @@ function applyScheme(name, opts = {}) {
   floats.forEach((f) => { setClear(f.panel); f.panel.setGeometry(computeGeometry(meshes, scale, f.win)); });
   if (typeof current === "number" && data.nEvents > 0) gotoEvent(current);
 }
-let activeScheme = DEFAULT_SCHEME;
 
 
 // Global multiplier on every category (set from [ui] font_scale / +/-).
