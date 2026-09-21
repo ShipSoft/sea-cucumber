@@ -971,13 +971,18 @@ int main(int argc, char* argv[]) {
     if (useCache) {
         // A cache stores positions already multiplied by the scale it was
         // written at; replaying it under a different --scale/--view would
-        // silently mis-scale the whole display, so treat that as stale.
-        const double cScale = shipdisp::CachedGeometrySource::cachedScale(mainCachePath);
-        if (!(std::abs(cScale - view.hit_scale) <= 1e-9 * view.hit_scale)) {
-            std::cerr << "[sea_cucumber] geometry cache '" << geoCache << "' was written at scale "
-                      << cScale << " but the current view uses " << view.hit_scale
-                      << " -- falling back to the .db (rebuild with make_geometry_cache)\n";
-            useCache = false;
+        // silently mis-scale the whole display, so treat that as stale. The
+        // two files carry their own scale and nothing forces them to come from
+        // the same make_geometry_cache run, so both have to agree.
+        for (const auto& path : {mainCachePath, regionCachePath}) {
+            const double cScale = shipdisp::CachedGeometrySource::cachedScale(path);
+            if (!(std::abs(cScale - view.hit_scale) <= 1e-9 * view.hit_scale)) {
+                std::cerr << "[sea_cucumber] geometry cache '" << path << "' was written at scale "
+                          << cScale << " but the current view uses " << view.hit_scale
+                          << " -- falling back to the .db (rebuild with make_geometry_cache)\n";
+                useCache = false;
+                break;
+            }
         }
     }
 
