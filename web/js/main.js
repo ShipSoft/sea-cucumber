@@ -1222,31 +1222,6 @@ function tick() {
 
     await gotoEvent(0);
 
-    // Build the region views from the manifest, which the producer fills from
-    // views/default.toml (model A: the TOML is the single source of the web
-    // layout -- windows, cameras, and panel position/size). No JSON setup, no
-    // localStorage. Edit the [[region]] blocks in views/default.toml to change
-    // the default arrangement.
-    let cascade = 0;
-    for (const rgn of data.regions) {
-      const win = winFromRegion(rgn);
-      const entry = createFloatingView({ win });
-      if (rgn.name) {
-        entry.name = rgn.name;
-        const t = entry.el.querySelector(".fpanel__title");
-        if (t) t.textContent = rgn.name;
-      }
-      // Panel geometry from the TOML (panel_x/y/w/h -> manifest .panel),
-      // interpreted as VIEWPORT PERCENTAGES so a layout is resolution-
-      // independent. Falls back to a percentage cascade when unset.
-      const p = rgn.panel || {};
-      const off = 4 + (cascade++ % 6) * 3;   // % cascade
-      entry.el.style.left = (p.x != null ? p.x : off) + "%";
-      entry.el.style.top = (p.y != null ? p.y : off) + "%";
-      entry.el.style.width = (p.w != null ? p.w : 26) + "%";
-      entry.el.style.height = (p.h != null ? p.h : 34) + "%";
-      applyCamera(entry.panel, rgn.camera || "side");
-    }
     selectView(null);
 
     setStatus("");
