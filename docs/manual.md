@@ -22,8 +22,8 @@ rev 0.1, 10.09.2026
 
 sea_cucumber follows the ALICE O2 event-display pattern (arXiv:2503.00088): the
 C++ side is the single source of truth — it loads the `.db`, reads the data
-model, resolves colours, and tessellates geometry — and it *produces display
-files*; a separate viewer *renders* them. Nothing about the physics or geometry
+model, resolves colours, and tessellates geometry — and it _produces display
+files_; a separate viewer _renders_ them. Nothing about the physics or geometry
 is re-interpreted at view time.
 
 There are three ways to view:
@@ -46,16 +46,16 @@ independently testable:
 
 sea_cucumber is a pixi workspace. All workflows go through pixi tasks:
 
-| Task | What it does |
-|------|--------------|
-| `pixi run build` | Configure + compile (CMake + Ninja). |
-| `pixi run test` | Build, then run the CTest suite. |
-| `pixi run lint` | Run the pre-commit hooks (C++, CMake, web frontend, Python, REUSE…). |
-| `pixi run sea_cucumber …` (aliases `sc`, `run_event_display`, `ED`) | Launch the REve display. |
-| `pixi run web-data …` | Produce the web display files into `web/data`. |
-| `pixi run web` | Serve `web/` at http://localhost:8080. |
-| `pixi run geo-cache …` | Build a geometry cache to speed up REve start-up. |
-| `pixi run clean` | Remove the build directory. |
+| Task                                                                | What it does                                                         |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `pixi run build`                                                    | Configure + compile (CMake + Ninja).                                 |
+| `pixi run test`                                                     | Build, then run the CTest suite.                                     |
+| `pixi run lint`                                                     | Run the pre-commit hooks (C++, CMake, web frontend, Python, REUSE…). |
+| `pixi run sea_cucumber …` (aliases `sc`, `run_event_display`, `ED`) | Launch the REve display.                                             |
+| `pixi run web-data …`                                               | Produce the web display files into `web/data`.                       |
+| `pixi run web`                                                      | Serve `web/` at http://localhost:8080.                               |
+| `pixi run geo-cache …`                                              | Build a geometry cache to speed up REve start-up.                    |
+| `pixi run clean`                                                    | Remove the build directory.                                          |
 
 ### The REve display
 

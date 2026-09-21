@@ -1,9 +1,12 @@
 <!-- SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration -->
 <!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+
 # Changelog
 
 ## [0.1.0] - unreleased
+
 ### Added
+
 - Standalone REve event display reading the official SHiP data model (RNTuple)
   and GeoModel `.db` geometry.
 - `IEventSource` / `RNTupleEventSource`: tolerant reader of the `events` ntuple
