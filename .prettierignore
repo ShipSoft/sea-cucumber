@@ -3,6 +3,11 @@
 #
 # prek only ever hands the hook git-tracked, type-matched files, so none of
 # these reach it. This guards a hand-run `prettier --write .`.
+
+# Vendored three.js, when the CDN is not reachable (see docs/manual.md).
+web/vendor/
+web/js/vendor/
+
 pixi.lock
 web/data/
 .pixi/

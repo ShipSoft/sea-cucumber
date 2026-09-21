@@ -10,6 +10,9 @@
 // frontend starts using a new browser API, otherwise no-undef will flag it.
 
 export default [
+  // Third-party code: vendored three.js lives here when the CDN is not reachable
+  // (see docs/manual.md). Not ours to format or lint.
+  { ignores: ["web/vendor/**", "web/js/vendor/**"] },
   {
     files: ["**/*.js"],
     languageOptions: {
