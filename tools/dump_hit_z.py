@@ -85,7 +85,7 @@ def main() -> int:
 
     print(f"event {args.event}: {len(zs)} hits (mm)\n")
     print(f"{'hit':>6} {'x':>14} {'y':>14} {'z':>14}")
-    for i, (x, y, z) in enumerate(zip(xs, ys, zs)):
+    for i, (x, y, z) in enumerate(zip(xs, ys, zs, strict=True)):
         print(f"{i:>6} {x:>14.2f} {y:>14.2f} {z:>14.2f}")
 
     if zs:
