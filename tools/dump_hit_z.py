@@ -14,6 +14,7 @@ Usage:
 Needs uproot >= 5 (reads RNTuple directly, no ROOT/dictionary needed):
     pip install "uproot>=5" awkward
 """
+
 import argparse
 import sys
 
@@ -49,7 +50,7 @@ def main() -> int:
     n = len(arrays)
     print(f"{args.file}: ntuple '{args.ntuple}' has {n} events")
     if args.event >= n:
-        print(f"event {args.event} out of range [0,{n-1}]", file=sys.stderr)
+        print(f"event {args.event} out of range [0,{n - 1}]", file=sys.stderr)
         return 1
     row = arrays[args.event]
 
@@ -74,8 +75,7 @@ def main() -> int:
             break
 
     if pos is None:
-        print("could not locate hit positions; inspect 'fields' above and adjust.",
-              file=sys.stderr)
+        print("could not locate hit positions; inspect 'fields' above and adjust.", file=sys.stderr)
         return 1
 
     # pos is an array of length-3 arrays (mm).
@@ -92,7 +92,7 @@ def main() -> int:
         print("\nsummary (mm):")
         print(f"  x range [{min(xs):.1f}, {max(xs):.1f}]")
         print(f"  y range [{min(ys):.1f}, {max(ys):.1f}]")
-        print(f"  z range [{min(zs):.1f}, {max(zs):.1f}]  mean z {sum(zs)/len(zs):.1f}")
+        print(f"  z range [{min(zs):.1f}, {max(zs):.1f}]  mean z {sum(zs) / len(zs):.1f}")
     return 0
 
 
