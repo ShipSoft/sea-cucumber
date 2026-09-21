@@ -39,7 +39,8 @@ does: it links [SHiPDataModel](https://github.com/ShipSoft/data-model), reads th
 ```
 pixi run build       # configure + build
 pixi run test        # ctest (RNTuple round-trip, DB resolution, geometry cache)
-pixi run lint        # prek: clang-format, cpplint, gersemi, cmakelint, codespell, reuse
+pixi run lint        # prek: clang-format, cpplint, gersemi, cmakelint, codespell,
+                     #       reuse, prettier, eslint, stylelint, ruff
 ```
 
 `build` depends on `configure`; `test` on `build`. SHiP-specific packages
