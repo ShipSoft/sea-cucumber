@@ -6,10 +6,10 @@ jobs:
   build-test-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/setup-pixi@v0.10.2
         with:
-          pixi-version: latest
+          cache: true
       - run: pixi run build
       - run: pixi run test
       - run: pixi run lint
