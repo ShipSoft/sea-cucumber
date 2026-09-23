@@ -75,7 +75,7 @@ SHIPGEOMETRY_ROOT = "$CONDA_PREFIX"
 [feature.lint.dependencies]
 prek = "*"
 python = ">=3.11"
-clang-format = "22.*"
+clang-format = "23.*"
 codespell = "*"
 cmakelint = "*"
 reuse = "*"
@@ -84,7 +84,7 @@ commitizen = "*"
 
 [feature.lint.pypi-dependencies]
 cpplint = "==2.0.2"
-gersemi = "==0.27.7"
+gersemi = "==0.29.1"
 
 [feature.lint.tasks]
 # `pixi run lint` (pixi auto-selects the lint environment for this task).
