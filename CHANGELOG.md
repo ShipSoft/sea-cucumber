@@ -12,3 +12,9 @@
   aegir, with aegir-style DB resolution and a `SHiPGeometryService` seam.
 - `GeoModelLoader`: GeoModel world -> TGeo/REve shape translation.
 - TOML view config; pixi build/test/lint tasks.
+
+### Fixed
+- `RNTupleEventSource` no longer aborts on files containing fields it does not
+  display (e.g. aegir's `event_header`): each displayed collection is read
+  through its own `RNTupleView`, so other fields are never reconstructed and
+  need no dictionary (#35).

@@ -7,20 +7,23 @@
 //  RNTupleEventSource.h
 //
 //  Reads the official SHiP event data model from an RNTuple -- the exact
-//  format aegir's `sim_output_module` writes. Field layout (confirmed from the
-//  data-model repo's RNTuple/TTree round-trip tests) is one top-level field
-//  per collection in an ntuple named "events":
+//  format aegir's `sim_output_module` writes. Field layout is one top-level
+//  field per collection in an ntuple named "events"; the display reads:
 //
-//      mcParticles   : std::vector<SHiP::MCParticle>
-//      simHits       : std::vector<SHiP::SimHit>
-//      simParticles  : std::vector<SHiP::SimParticle>
-//      recParticles  : std::vector<SHiP::RecParticle>
-//      simResult     : SHiP::SimResult   { vector<SimHit>, vector<SimParticle> }
+//      mc_particles   : std::vector<SHiP::MCParticle>
+//      sim_hits       : std::vector<SHiP::SimHit>
+//      sim_particles  : std::vector<SHiP::SimParticle>
+//      rec_particles  : std::vector<SHiP::RecParticle>
+//      sim_result     : SHiP::SimResult   { vector<SimHit>, vector<SimParticle> }
 //
-//  The reader is TOLERANT: any of these fields may be missing. hits() and
-//  simParticles() prefer the flat `simHits` / `simParticles` fields and fall
-//  back to `simResult`'s bundled collections when the flat ones are absent,
-//  so a file written with only `simResult` still displays.
+//  The reader is TOLERANT in both directions:
+//    * any of these fields may be missing. hits() and simParticles() prefer
+//      the flat `sim_hits` / `sim_particles` fields and fall back to
+//      `sim_result`'s bundled collections when the flat ones are absent, so a
+//      file written with only `sim_result` still displays;
+//    * any OTHER field is ignored without being reconstructed -- e.g. aegir's
+//      `event_header`, or collections from a newer data model than this build
+//      was compiled against. Only the fields above need a dictionary.
 //
 //  Requires ROOT 6.40+ (ROOTNTuple component) and links SHiP::SHiPDataModel,
 //  matching aegir's dependency set. The RNTuple headers are kept out of this
