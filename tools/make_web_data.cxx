@@ -20,7 +20,7 @@
 //  frontend scales mm -> scene units itself (manifest.unit_mm_per_scene).
 //
 //  Usage:
-//    make_web_data --geometry ship.db --data events.root [--view v.toml]
+//    make_web_data --geometry ship.db|ship.gdml --data events.root [--view v.toml]
 //                  [--out web/data] [--events all|<i>]
 // =============================================================================
 
@@ -38,7 +38,7 @@
 #include <utility>
 #include <vector>
 
-#include "GeoModelGeometrySource.h"
+#include "GeometrySourceFactory.h"
 #include "IEventSource.h"
 #include "RNTupleEventSource.h"
 #include "ViewConfig.h"
@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
         else if (a == "--max-shapes")
             webMaxShapes = static_cast<std::size_t>(std::stoll(nxt()));
         else if (a == "-h" || a == "--help") {
-            std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
+            std::cout << "Usage: make_web_data --geometry ship.db|ship.gdml --data events.root "
                          "[--view v.toml] [--out web/data] [--events all|<i>] "
                          "[--depth 4] [--max-shapes 20000]\n";
             return 0;
@@ -275,8 +275,8 @@ int main(int argc, char* argv[]) {
     std::size_t nMesh = 0, nSkipped = 0;
     bool firstMesh = true;
     try {
-        shipdisp::GeoModelGeometrySource src(geometry, opt);
-        src.provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
+        const auto src = shipdisp::MakeGeometrySource(geometry, opt);
+        src->provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
             // Colour: an explicit per-volume match colour from the config wins;
             // otherwise pick from a curated palette by hashing the name. It is
             // blue-dominant (six blues) with a cream and a muted purple worked

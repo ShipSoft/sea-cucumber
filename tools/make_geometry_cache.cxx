@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // =============================================================================
-//  make_geometry_cache -- one-off conversion of a GeoModel .db into a compact
-//  sea_cucumber display cache, so the display starts without re-reading the
-//  ~1M-volume database every launch.
+//  make_geometry_cache -- one-off conversion of a GeoModel .db (or a GDML file)
+//  into a compact sea_cucumber display cache, so the display starts without
+//  re-reading the ~1M-volume geometry every launch.
 //
 //  This captures BOTH passes the display needs -- the shallow whole-detector
 //  envelope pass and the deeper per-region pass -- into two cache files, since
 //  they use different walk options. The display picks up each automatically.
 //
 //  Usage:
-//    make_geometry_cache --geometry ship.db [--view views/default.toml]
+//    make_geometry_cache --geometry ship.db|ship.gdml [--view views/default.toml]
 //                        [--out-prefix geocache]
 //  Produces <prefix>.main.root and <prefix>.region.root next to the .db's CWD.
 // =============================================================================
@@ -19,8 +19,8 @@
 #include <iostream>
 #include <string>
 
-#include "GeoModelGeometrySource.h"
 #include "GeometryCache.h"
+#include "GeometrySourceFactory.h"
 #include "ViewConfig.h"
 
 int main(int argc, char* argv[]) {
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
         else if (a == "--out-prefix")
             outPrefix = nxt();
         else if (a == "-h" || a == "--help") {
-            std::cout << "Usage: make_geometry_cache --geometry ship.db "
+            std::cout << "Usage: make_geometry_cache --geometry ship.db|ship.gdml "
                          "[--view v.toml] [--out-prefix geocache]\n";
             return 0;
         }
@@ -67,13 +67,13 @@ int main(int argc, char* argv[]) {
     regionOpt.max_shapes = 5000000;
 
     try {
-        shipdisp::GeoModelGeometrySource mainSrc(geometry, mainOpt);
-        shipdisp::WriteGeometryCache(mainSrc, outPrefix + ".main.root",
+        const auto mainSrc = shipdisp::MakeGeometrySource(geometry, mainOpt);
+        shipdisp::WriteGeometryCache(*mainSrc, outPrefix + ".main.root",
                                      "main envelope pass of " + geometry);
 
-        shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
+        const auto regionSrc = shipdisp::MakeGeometrySource(geometry, regionOpt);
         shipdisp::WriteGeometryCache(
-            regionSrc, outPrefix + ".region.root",
+            *regionSrc, outPrefix + ".region.root",
             "region deep pass (depth " + std::to_string(regionOpt.max_depth) + ") of " + geometry);
     } catch (const std::exception& e) {
         std::cerr << "[make_geometry_cache] failed: " << e.what() << "\n";

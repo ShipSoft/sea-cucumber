@@ -4,6 +4,14 @@
 
 ## [0.1.0] - unreleased
 ### Added
+- GDML geometry input. `--geometry` now accepts a `.gdml` file as well as a
+  GeoModel `.db` in `sea_cucumber` (incl. `--inspect` and name-matched regions),
+  `make_web_data`, `make_geometry_cache` and `make_demo_event`.
+  `GdmlGeometrySource` parses with `TGDMLParse`, emits in mm under the same
+  include/exclude/depth/z-window rules as the GeoModel walk, treats matching
+  `<assembly>`s as envelopes, and leaves any existing `gGeoManager` untouched.
+  `MakeGeometrySource` / `ScanGeometry` pick the backend by extension, then
+  by file content. New `test_gdml_geometry` test.
 - Standalone REve event display reading the official SHiP data model (RNTuple)
   and GeoModel `.db` geometry.
 - `IEventSource` / `RNTupleEventSource`: tolerant reader of the `events` ntuple

@@ -2,7 +2,7 @@
 # Copyright (C) CERN for the benefit of the SHiP Collaboration
 #
 # sea_cucumber -- standalone REve event display for the SHiP experiment.
-# Reads the official RNTuple event data model and GeoModel .db geometry,
+# Reads the official RNTuple event data model and GeoModel .db or GDML geometry,
 # mirroring aegir's dependency set (ROOT 6.40+, SHiPDataModel, GeoModel).
 #
 # Recommended build is via pixi (see pixi.toml):
@@ -73,6 +73,8 @@ add_library(
     src/RNTupleEventSource.cxx
     src/GeoModelLoader.cxx
     src/GeoModelGeometrySource.cxx
+    src/GdmlGeometrySource.cxx
+    src/GeometrySourceFactory.cxx
     src/ViewConfig.cxx
     src/GeometryCache.cxx
     src/EventNavigator.cxx
