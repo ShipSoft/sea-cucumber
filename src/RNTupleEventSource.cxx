@@ -3,17 +3,19 @@
 // =============================================================================
 //  RNTupleEventSource.cxx -- see header.
 //
-//  The bind pattern mirrors the data-model repo's own RNTuple round-trip test
-//  (tests/test_rntuple_io.cpp): open the reader, take the default entry, get a
-//  shared_ptr<T> per field, then LoadEntry(i) refills those pointees. That is
-//  the pattern the data-model authors validate against their ROOT version, so
-//  it is guaranteed to match.
+//  Each collection the display uses is read through its own RNTupleView,
+//  bound to a shared_ptr the accessors hand out. A view reconstructs only its
+//  own field, so the reader never touches the rest of the RNTuple: fields the
+//  display does not know about (e.g. aegir's `event_header`, or anything the
+//  data model grows in future) are simply never materialised. Going through
+//  GetModel()/LoadEntry() instead would rebuild *every* on-disk field and
+//  abort on the first type without a dictionary in this build (issue #35).
 // =============================================================================
 
 #include "RNTupleEventSource.h"
 
-#include <ROOT/REntry.hxx>
 #include <ROOT/RNTupleReader.hxx>
+#include <ROOT/RNTupleView.hxx>
 
 #include <TFile.h>
 #include <TKey.h>
@@ -21,6 +23,8 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
+#include <string_view>
 
 #include "SHiP/SimResult.hpp"
 
@@ -34,41 +38,65 @@ const std::vector<SHiP::SimParticle> kNoParticles;
 const std::vector<SHiP::MCParticle> kNoMC;
 const std::vector<SHiP::RecParticle> kNoRec;
 
-// Bind one top-level field if present; returns nullptr (and prints an info
-// line) if the field is missing or its type doesn't match. RNTuple's default
-// entry only exposes fields that exist on disk, so GetPtr throws for an absent
-// or mistyped field -- we treat that as "not present" rather than fatal.
+/// One top-level field read through its own view. `value` is null when the
+/// field is absent or has an incompatible type; load() is then a no-op.
 template <typename T>
-std::shared_ptr<T> tryBind(const ROOT::REntry& entry, const char* name) {
-    try {
-        return entry.GetPtr<T>(name);
-    } catch (const std::exception&) {
+struct BoundField {
+    std::shared_ptr<T> value;
+    std::optional<ROOT::RNTupleView<T>> view;
+
+    void load(ROOT::NTupleSize_t i) {
+        if (view) (*view)(i);
+    }
+};
+
+/// Bind field @p name as type T, or return an empty BoundField (with an info
+/// line) if it is missing or mistyped -- never fatal.
+template <typename T>
+BoundField<T> bindField(ROOT::RNTupleReader& reader, std::string_view name) {
+    if (reader.GetDescriptor().FindFieldId(name) == ROOT::kInvalidDescriptorId) {
         std::cout << "[RNTupleEventSource] field '" << name << "' not present -- skipping\n";
-        return nullptr;
+        return {};
+    }
+    try {
+        auto value = std::make_shared<T>();
+        auto view = reader.GetView<T>(name, value);
+        return {std::move(value), std::move(view)};
+    } catch (const std::exception& e) {
+        std::cerr << "[RNTupleEventSource] field '" << name
+                  << "' has an incompatible type -- skipping: " << e.what() << "\n";
+        return {};
     }
 }
 }  // namespace
 
 struct RNTupleEventSource::Impl {
+    // Declared first so it is destroyed last: the views below read through it.
     std::unique_ptr<ROOT::RNTupleReader> reader;
 
-    // Bound pointees (any may be null if the field is absent).
-    std::shared_ptr<std::vector<SHiP::MCParticle>> mc;
-    std::shared_ptr<std::vector<SHiP::SimHit>> hits;
-    std::shared_ptr<std::vector<SHiP::SimParticle>> parts;
-    std::shared_ptr<std::vector<SHiP::RecParticle>> rec;
-    std::shared_ptr<SHiP::SimResult> result;
+    BoundField<std::vector<SHiP::MCParticle>> mc;
+    BoundField<std::vector<SHiP::SimHit>> hits;
+    BoundField<std::vector<SHiP::SimParticle>> parts;
+    BoundField<std::vector<SHiP::RecParticle>> rec;
+    BoundField<SHiP::SimResult> result;
 
     // Per-event "effective" views: flat field if available, else simResult's
     // bundle, else the shared empty.
     const std::vector<SHiP::SimHit>* effHits = &kNoHits;
     const std::vector<SHiP::SimParticle>* effParts = &kNoParticles;
 
-    void refresh() {
-        effHits = (hits && !hits->empty()) ? hits.get() : (result) ? &result->hits : &kNoHits;
-        effParts = (parts && !parts->empty()) ? parts.get()
-                   : (result)                 ? &result->particles
-                                              : &kNoParticles;
+    void load(ROOT::NTupleSize_t i) {
+        mc.load(i);
+        hits.load(i);
+        parts.load(i);
+        rec.load(i);
+        result.load(i);
+
+        const auto& h = hits.value;
+        const auto& p = parts.value;
+        const auto& r = result.value;
+        effHits = (h && !h->empty()) ? h.get() : r ? &r->hits : &kNoHits;
+        effParts = (p && !p->empty()) ? p.get() : r ? &r->particles : &kNoParticles;
     }
 };
 
@@ -97,15 +125,15 @@ RNTupleEventSource::RNTupleEventSource(const std::string& path, const std::strin
         return;
     }
 
-    const auto& entry = p_->reader->GetModel().GetDefaultEntry();
-    p_->mc = tryBind<std::vector<SHiP::MCParticle>>(entry, "mc_particles");
-    p_->hits = tryBind<std::vector<SHiP::SimHit>>(entry, "sim_hits");
-    p_->parts = tryBind<std::vector<SHiP::SimParticle>>(entry, "sim_particles");
-    p_->rec = tryBind<std::vector<SHiP::RecParticle>>(entry, "rec_particles");
-    p_->result = tryBind<SHiP::SimResult>(entry, "sim_result");
+    auto& reader = *p_->reader;
+    p_->mc = bindField<std::vector<SHiP::MCParticle>>(reader, "mc_particles");
+    p_->hits = bindField<std::vector<SHiP::SimHit>>(reader, "sim_hits");
+    p_->parts = bindField<std::vector<SHiP::SimParticle>>(reader, "sim_particles");
+    p_->rec = bindField<std::vector<SHiP::RecParticle>>(reader, "rec_particles");
+    p_->result = bindField<SHiP::SimResult>(reader, "sim_result");
 
     std::cout << "[RNTupleEventSource] '" << path << "' ntuple '" << ntupleName
-              << "': " << p_->reader->GetNEntries() << " events\n";
+              << "': " << reader.GetNEntries() << " events\n";
 }
 
 RNTupleEventSource::~RNTupleEventSource() = default;
@@ -117,8 +145,7 @@ std::int64_t RNTupleEventSource::numEvents() const {
 bool RNTupleEventSource::loadEvent(std::int64_t i) {
     if (!p_->reader) return false;
     if (i < 0 || i >= static_cast<std::int64_t>(p_->reader->GetNEntries())) return false;
-    p_->reader->LoadEntry(static_cast<std::uint64_t>(i));
-    p_->refresh();
+    p_->load(static_cast<ROOT::NTupleSize_t>(i));
     return true;
 }
 
@@ -127,10 +154,10 @@ const std::vector<SHiP::SimParticle>& RNTupleEventSource::simParticles() const {
     return *p_->effParts;
 }
 const std::vector<SHiP::MCParticle>& RNTupleEventSource::mcParticles() const {
-    return p_->mc ? *p_->mc : kNoMC;
+    return p_->mc.value ? *p_->mc.value : kNoMC;
 }
 const std::vector<SHiP::RecParticle>& RNTupleEventSource::recParticles() const {
-    return p_->rec ? *p_->rec : kNoRec;
+    return p_->rec.value ? *p_->rec.value : kNoRec;
 }
 
 }  // namespace shipdisp
