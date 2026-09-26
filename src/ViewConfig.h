@@ -174,6 +174,14 @@ struct ViewConfig {
 ViewConfig LoadViewConfig(const std::string& path);
 ViewConfig DefaultViewConfig();
 
+/// Apply one TOML file on top of an existing config. Keys the file does not
+/// mention are left alone, so several files can be layered -- the view config
+/// first, then the user's (see UserConfig.h). With `ui_only`, only [ui] and
+/// [ui.fonts] are honoured and every other top-level table is named on stderr
+/// and skipped: appearance is personal, but what to draw is the view file's
+/// business. Returns false if the file could not be parsed.
+bool OverlayViewConfigFile(const std::string& path, ViewConfig& c, bool ui_only = false);
+
 }  // namespace shipdisp
 
 #endif  // SHIPDISP_VIEWCONFIG_H

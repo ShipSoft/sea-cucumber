@@ -149,6 +149,43 @@ Camera and window are independent: a side view is normally a z slab, a front
 view an x or y slab. A mismatch is a warning, not an error — whatever windows
 you supplied are used, z preferred.
 
+### `[ui]` — web appearance
+
+`color_scheme` (a key of `SCHEMES` in `web/js/schemes.js`), `font_scale`,
+`sidebar_width` (px), and `[ui.fonts]` with a base size per text category
+(`window_title`, `menu`, `heading`, `dialog`, `brand`). The producer copies
+these into `web/data/manifest.json`; the REve display ignores them.
+
+A view file is shared, though, and appearance is personal — so prefer setting
+these in your own config, below.
+
+### The user config (`sea_cucumber.toml`)
+
+Separate from the view config and found without being named. Highest precedence
+first:
+
+| Where | Notes |
+| --- | --- |
+| `--config <path>` | must exist, or the tool stops |
+| `$SEA_CUCUMBER_CONFIG` | warns and falls through if it is gone |
+| `./sea_cucumber.toml` | project-local |
+| `$XDG_CONFIG_HOME/sea_cucumber/config.toml` | defaults to `~/.config/…` |
+| `<dir>/sea_cucumber/config.toml` for each `$XDG_CONFIG_DIRS` entry | defaults to `/etc/xdg` |
+| `$CONDA_PREFIX/share/sea_cucumber/config.toml` | shipped baseline |
+
+Every one of those that exists is applied, lowest first, each overriding only
+the keys it sets — a config with a single `[ui.fonts]` entry leaves the other
+categories alone. The whole stack lands on top of the view config, so your
+`color_scheme` beats the view file's. `--no-config` skips the search.
+
+It may set `[ui]`/`[ui.fonts]`, plus `[defaults]` with `view` and `geometry` to
+save typing those flags (a real flag still wins). Any other table is named on
+stderr and ignored: which volumes to draw and where the zoom regions sit is the
+view file's business, and a config under `~/.config` quietly swapping someone's
+geometry DB is how "works on my machine" starts.
+
+`configs/sea_cucumber.example.toml` is a commented starting point.
+
 ---
 
 ## 5. The web frontend
@@ -163,6 +200,14 @@ the **selected view**, or the main view if none is selected. Each view keeps its
 own settings, and a new view inherits them from the view it was created from.
 Camera buttons (3D / Side / Front / Top) reorient the selected view (else main).
 Clicking the main view deselects.
+
+Under **Colour scheme**, picking from the dropdown recolours everything live but
+is not remembered. **Set as default** stores the scheme, the text sizes and the
+menu width in *this browser* — the ★ in the dropdown and the caption below it
+mark what the page will open in, and where that came from. **Revert** throws
+that away and puts the config file's appearance back, live. Nothing is written
+to disk: the browser and the machine that ran `make_web_data` need not be the
+same host, which is why a per-viewer choice cannot live in the config file.
 
 ### Creating views
 
@@ -194,15 +239,25 @@ Clicking the main view deselects.
   position, size, region window, camera, display options, lock state, and border
   colour (but never the event — a setup is layout only).
 - **Load setup** reads such a file back and rebuilds the arrangement.
-- On start-up the frontend auto-loads `configs/sea_cucumber_default_setup.json`
-  if present; edit that file to change the default layout.
+- The default layout comes from the `[[region]]` blocks of the view config, via
+  `manifest.json` — edit those to change it. ("Save setup" posts to
+  `/api/save-setup` first, which the static `pixi run web` server does not
+  implement, so it falls back to the download.)
 
 ### Colours
 
-Dark-earth background, blue-dominant detector geometry (with cream and muted
-purple mixed in), darker-pink hits, lighter-pink decay vertex, cream text.
-Detector colour comes from the producer; hit/vertex colours are set in
-`web/js/main.js`.
+Everything the frontend draws is driven by a named **colour scheme** in
+`web/js/schemes.js`. A scheme maps a handful of roles — `bg`, `bg2`, `surface`,
+`text`, `accent`, `hit`, `vertex`, and a `geometry` palette picked per volume by
+name hash — onto colours; `applyScheme()` in `main.js` writes them into the CSS
+variables, the 3D clear colour and the markers. `ship_original` (dark earth,
+blue geometry, pink hits, cream text) is the default, and `SCHEMES` also carries
+the other SHiP palettes and several terminal-style ones.
+
+A scheme with `geometry = null` falls back to the per-volume colours the
+producer resolved from `[geometry]`/`[[style]]`. Pick the default with
+`color_scheme`, in the view config or (better) your own config; pick it for one
+browser with **Set as default**.
 
 ### Assets
 
