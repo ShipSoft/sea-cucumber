@@ -13,19 +13,19 @@
 //    event_<i>.json  one file per event: hits (+ energy, pdg) and truth vertex
 //    manifest.json   { nEvents, geometry, unit_mm_per_scene }
 //
-//  Tessellation: every TGeoShape can produce a triangle mesh through ROOT's
-//  TBuffer3D (the same buffer the OpenGL viewer uses), so booleans, pcons, etc.
-//  all work without special cases. We transform each mesh's vertices into the
-//  world frame with the volume's matrix, and emit native millimetres -- the
-//  frontend scales mm -> scene units itself (manifest.unit_mm_per_scene).
+//  Tessellation: plain shapes (boxes, tubes, pcons, ...) produce a polygon mesh
+//  through ROOT's TBuffer3D (the same buffer the OpenGL viewer uses). Booleans
+//  (TGeoCompositeShape) have no buffer of their own; they are meshed with
+//  ROOT's CSG library (RootCsg), exactly as the REve viewer does. We transform
+//  each mesh's vertices into the world frame with the volume's matrix, and emit
+//  native millimetres -- the frontend scales mm -> scene units itself
+//  (manifest.unit_mm_per_scene).
 //
 //  Usage:
 //    make_web_data --geometry ship.db|ship.gdml --data events.root [--view v.toml]
 //                  [--out web/data] [--events all|<i>]
 // =============================================================================
 
-#include <TBuffer3D.h>
-#include <TBuffer3DTypes.h>
 #include <TGeoMatrix.h>
 #include <TGeoShape.h>
 
@@ -41,6 +41,7 @@
 #include "GeometrySourceFactory.h"
 #include "IEventSource.h"
 #include "RNTupleEventSource.h"
+#include "ShapeMesh.h"
 #include "ViewConfig.h"
 
 namespace {
@@ -77,93 +78,20 @@ bool writeMesh(std::ofstream& out, const std::string& name, TGeoShape* shape, co
                const std::string& colorHex, int transparency, bool first) {
     if (!shape) return false;
 
-    // Use MakeBuffer3D(), NOT GetBuffer3D(): the latter fills a shared static
-    // buffer via the geometry painter and dereferences painter/manager state
-    // that a standalone shape doesn't have (it segfaults in FillBuffer3D even
-    // for a plain box). MakeBuffer3D() allocates and fills its own buffer with
-    // no painter dependency -- this is how extracted shapes are tessellated
-    // without an active TGeoManager. We own the returned buffer.
-    std::unique_ptr<TBuffer3D> buf(shape->MakeBuffer3D());
-    if (!buf) return false;
-    const TBuffer3D& b = *buf;
-    const UInt_t nPts = b.NbPnts();
-    const UInt_t nPols = b.NbPols();
-    if (nPts == 0 || nPols == 0) return false;
-
-    // Points are a flat [x0,y0,z0,x1,...] array in the shape's local frame; move
-    // each into the world frame with the volume matrix.
+    // Local-frame triangles (booleans go through CSG; see ShapeMesh.h).
     std::vector<double> vx;
-    vx.reserve(nPts * 3);
-    for (UInt_t i = 0; i < nPts; ++i) {
-        Double_t local[3] = {b.fPnts[3 * i], b.fPnts[3 * i + 1], b.fPnts[3 * i + 2]};
+    std::vector<int> idx;
+    if (!shipdisp::TessellateShape(shape, vx, idx)) return false;
+
+    // Move every vertex into the world frame with the volume matrix.
+    for (std::size_t i = 0; i + 2 < vx.size(); i += 3) {
+        const Double_t local[3] = {vx[i], vx[i + 1], vx[i + 2]};
         Double_t world[3];
         g.LocalToMaster(local, world);
-        vx.push_back(world[0]);
-        vx.push_back(world[1]);
-        vx.push_back(world[2]);
+        vx[i] = world[0];
+        vx[i + 1] = world[1];
+        vx[i + 2] = world[2];
     }
-
-    // Triangulate. fPols is: [colour, nSegs, seg0, seg1, ..., colour, nSegs, ...].
-    // A polygon's segments form a closed loop but are NOT given head-to-tail,
-    // so we must reconstruct the vertex order by walking the edges as a graph:
-    // each segment is an edge between two point indices, every vertex in a
-    // simple polygon has exactly two incident edges, so we start anywhere and
-    // follow "the neighbour we didn't just come from" until the loop closes.
-    std::vector<int> idx;
-    const Int_t* segs = b.fSegs;
-    const Int_t* pols = b.fPols;
-    UInt_t q = 0;
-    for (UInt_t p = 0; p < nPols; ++p) {
-        const Int_t nSeg = pols[q + 1];
-        // Edges of this polygon (pairs of point indices).
-        std::vector<std::pair<int, int>> edges;
-        edges.reserve(nSeg);
-        for (Int_t s = 0; s < nSeg; ++s) {
-            const Int_t segIdx = pols[q + 2 + s];
-            edges.emplace_back(segs[3 * segIdx + 1], segs[3 * segIdx + 2]);
-        }
-        q += 2 + nSeg;
-
-        // Walk the edges into an ordered loop.
-        std::vector<int> loop;
-        loop.reserve(nSeg);
-        std::vector<char> used(edges.size(), 0);
-        // Start from the first edge.
-        loop.push_back(edges[0].first);
-        int cur = edges[0].second;
-        used[0] = 1;
-        loop.push_back(cur);
-        for (Int_t step = 1; step < nSeg; ++step) {
-            bool found = false;
-            for (std::size_t e = 0; e < edges.size(); ++e) {
-                if (used[e]) continue;
-                int nxt = -1;
-                if (edges[e].first == cur)
-                    nxt = edges[e].second;
-                else if (edges[e].second == cur)
-                    nxt = edges[e].first;
-                if (nxt >= 0) {
-                    used[e] = 1;
-                    cur = nxt;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) break;               // open/broken polygon; stop
-            if (cur == loop.front()) break;  // closed the loop
-            loop.push_back(cur);
-        }
-
-        // Fan-triangulate the ordered loop, skipping degenerate triangles.
-        for (std::size_t t = 1; t + 1 < loop.size(); ++t) {
-            const int a = loop[0], c1 = loop[t], c2 = loop[t + 1];
-            if (a == c1 || c1 == c2 || a == c2) continue;
-            idx.push_back(a);
-            idx.push_back(c1);
-            idx.push_back(c2);
-        }
-    }
-    if (idx.empty()) return false;
 
     if (!first) out << ",\n";
     out << "  {\"name\":\"" << jsonEscape(name) << "\",\"color\":\"" << colorHex

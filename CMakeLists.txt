@@ -42,6 +42,7 @@ find_package(
         ROOTEve
         ROOTWebDisplay
         ROOTNTuple
+        RCsg
 )
 
 # --- Official SHiP event data model (dictionary classes) ---------------------
@@ -75,6 +76,7 @@ add_library(
     src/GeoModelGeometrySource.cxx
     src/GdmlGeometrySource.cxx
     src/GeometrySourceFactory.cxx
+    src/ShapeMesh.cxx
     src/ViewConfig.cxx
     src/GeometryCache.cxx
     src/EventNavigator.cxx
@@ -99,6 +101,7 @@ target_link_libraries(
         ROOT::ROOTEve
         ROOT::ROOTWebDisplay
         ROOT::ROOTNTuple
+        ROOT::RCsg # meshes boolean shapes for geometry.json (ShapeMesh)
         SHiP::SHiPDataModel
         GeoModelCore::GeoModelKernel
         GeoModelIO::GeoModelDBManager

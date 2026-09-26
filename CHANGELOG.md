@@ -22,6 +22,10 @@
 - TOML view config; pixi build/test/lint tasks.
 
 ### Fixed
+- `make_web_data` no longer drops boolean volumes (`TGeoCompositeShape`) from
+  `geometry.json`: `TGeoCompositeShape::MakeBuffer3D()` returns nullptr, so they
+  are now meshed with ROOT's CSG library (`RCsg`), as the REve viewer does.
+  Meshing lives in `ShapeMesh` with a new `test_shape_mesh` test.
 - `RNTupleEventSource` no longer aborts on files containing fields it does not
   display (e.g. aegir's `event_header`): each displayed collection is read
   through its own `RNTupleView`, so other fields are never reconstructed and
