@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# Global owner; most specific rule below wins. See
+# https://docs.github.com/articles/about-code-owners
+
+* @matclim  # Matei Climescu (Ghent University)
