@@ -14,13 +14,13 @@
 //      the TRUTH decay vertex. No tracks/vertices are fabricated beyond this.
 //    * simResult: bundles the hits.
 //
-//  GEOMETRY-AWARE: with --geometry <ship.db> it walks the real geometry
-//  (reusing GeoModelLoader) so hits land on the detectors you load. The
+//  GEOMETRY-AWARE: with --geometry <ship.db|ship.gdml> it walks the real geometry
+//  (through the same geometry providers as the display) so hits land on the detectors you load. The
 //  "downstream section" is taken as roughly the last 15 m in z; override with
 //  --down-min <mm>. Falls back to an approximate SHiP layout with no geometry.
 //
 //  Units: mm, GeV/c, GeV, ns.
-//  Usage: make_demo_event [--geometry ship.db] [--output demo_events.root]
+//  Usage: make_demo_event [--geometry ship.db|ship.gdml] [--output demo_events.root]
 //                         [--events N] [--seed S] [--down-min <mm>]
 // =============================================================================
 
@@ -43,6 +43,7 @@
 #include <vector>
 
 #include "GeoModelLoader.h"
+#include "GeometrySourceFactory.h"
 #include "SHiP/MCParticle.hpp"
 #include "SHiP/SimHit.hpp"
 #include "SHiP/SimResult.hpp"
@@ -103,8 +104,8 @@ GeoInfo loadGeometry(const std::string& db) {
     opt.length_scale = 1.0;
     opt.verbose = false;
     try {
-        shipdisp::LoadGeoModelDB(
-            db, opt, [&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& m, int) {
+        shipdisp::MakeGeometrySource(db, opt)->provide(
+            [&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& m, int) {
                 const Double_t* t = m.GetTranslation();
                 g.centres[classify(name)].push_back({t[0], t[1], t[2]});
                 g.zmax = std::max(g.zmax, t[2]);
@@ -148,7 +149,7 @@ int main(int argc, char* argv[]) {
         else if (a == "--down-min")
             downMinArg = std::atof(nxt());
         else if (a == "-h" || a == "--help") {
-            std::cout << "Usage: make_demo_event [--geometry ship.db] [--output f.root] "
+            std::cout << "Usage: make_demo_event [--geometry ship.db|ship.gdml] [--output f.root] "
                          "[--events N] [--seed S] [--down-min mm]\n";
             return 0;
         }

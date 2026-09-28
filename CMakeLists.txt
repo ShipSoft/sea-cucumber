@@ -2,7 +2,7 @@
 # Copyright (C) CERN for the benefit of the SHiP Collaboration
 #
 # sea_cucumber -- standalone REve event display for the SHiP experiment.
-# Reads the official RNTuple event data model and GeoModel .db geometry,
+# Reads the official RNTuple event data model and GeoModel .db or GDML geometry,
 # mirroring aegir's dependency set (ROOT 6.40+, SHiPDataModel, GeoModel).
 #
 # Recommended build is via pixi (see pixi.toml):
@@ -42,6 +42,7 @@ find_package(
         ROOTEve
         ROOTWebDisplay
         ROOTNTuple
+        RCsg
 )
 
 # --- Official SHiP event data model (dictionary classes) ---------------------
@@ -73,6 +74,9 @@ add_library(
     src/RNTupleEventSource.cxx
     src/GeoModelLoader.cxx
     src/GeoModelGeometrySource.cxx
+    src/GdmlGeometrySource.cxx
+    src/GeometrySourceFactory.cxx
+    src/ShapeMesh.cxx
     src/ViewConfig.cxx
     src/GeometryCache.cxx
     src/EventNavigator.cxx
@@ -97,6 +101,7 @@ target_link_libraries(
         ROOT::ROOTEve
         ROOT::ROOTWebDisplay
         ROOT::ROOTNTuple
+        ROOT::RCsg # meshes boolean shapes for geometry.json (ShapeMesh)
         SHiP::SHiPDataModel
         GeoModelCore::GeoModelKernel
         GeoModelIO::GeoModelDBManager

@@ -5,8 +5,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # sea_cucumber manual
 
-The SHiP event display. It reads a GeoModel geometry database and the official
-SHiP RNTuple data model, and renders geometry and events two ways: the built-in
+The SHiP event display. It reads a GeoModel geometry database (or a GDML file)
+and the official SHiP RNTuple data model, and renders geometry and events two ways: the built-in
 ROOT REve viewer, and a standalone web frontend (three.js) that you fully
 control.
 
@@ -21,7 +21,7 @@ rev 0.1, 10.09.2026
 ## 1. Concepts and architecture
 
 sea_cucumber follows the ALICE O2 event-display pattern (arXiv:2503.00088): the
-C++ side is the single source of truth — it loads the `.db`, reads the data
+C++ side is the single source of truth — it loads the geometry, reads the data
 model, resolves colours, and tessellates geometry — and it *produces display
 files*; a separate viewer *renders* them. Nothing about the physics or geometry
 is re-interpreted at view time.
@@ -38,7 +38,9 @@ independently testable:
 - `IEventSource` — yields an event's hits, MC particles, etc.
   (`RNTupleEventSource` reads the `events` RNTuple).
 - `IGeometrySource` — emits geometry shapes (`GeoModelGeometrySource` walks the
-  GeoModel `.db`; `CachedGeometrySource` replays a pre-built cache).
+  GeoModel `.db`; `GdmlGeometrySource` walks a `.gdml` file;
+  `CachedGeometrySource` replays a pre-built cache). `MakeGeometrySource`
+  picks the `.db` or GDML backend from the `--geometry` file.
 
 ---
 
@@ -64,7 +66,7 @@ pixi run sc --geometry files/ship_geometry.db --data files/llp_display.root \
             --view views/default.toml --event 16
 ```
 
-Key flags: `--geometry <db>`, `--data <root>`, `--view <toml>`, `--event <i>`,
+Key flags: `--geometry <db|gdml>`, `--data <root>`, `--view <toml>`, `--event <i>`,
 `--ntuple <name>`, `--scale <f>`, `--logo <dir>`, `--geo-cache <prefix>`.
 
 ### The web display
@@ -77,7 +79,7 @@ pixi run web-data --geometry files/ship_geometry.db --data files/llp_display.roo
 pixi run web        # open http://localhost:8080
 ```
 
-`web-data` flags: `--geometry`, `--data`, `--view`, `--out <dir>` (default
+`web-data` flags: `--geometry` (`.db` or `.gdml`), `--data`, `--view`, `--out <dir>` (default
 `web/data`), `--events all|<i>`, `--depth <n>` (walk depth, default 4),
 `--max-shapes <n>` (cap, default 20000).
 
@@ -101,6 +103,10 @@ names straight from the SQLite `.db`:
 ```
 sqlite3 files/ship_geometry.db "SELECT name FROM LogVols ORDER BY name;"
 ```
+
+`--inspect` works the same on a GDML file (`--geometry ship.gdml`); there the
+names are the GDML `<volume>`/`<assembly>` names, which you can also grep from
+the file's `<structure>` section.
 
 ---
 
@@ -213,9 +219,48 @@ Detector colour comes from the producer; hit/vertex colours are set in
 
 ---
 
-## 6. The geometry cache
+## 6. GDML geometry
 
-Reading a ~1M-volume `.db` takes seconds on every launch. The cache converts it
+Every tool that takes `--geometry` (`sc`, `web-data`, `geo-cache`, `demo`)
+accepts a GDML file as well as a GeoModel `.db`:
+
+```
+pixi run sc --geometry files/ship_geometry.gdml --data files/llp_display.root \
+            --view views/default.toml
+```
+
+- **Format choice.** A `.gdml` extension selects GDML and `.db` / `.sqlite`
+  selects GeoModel. Any other extension is decided by content (an SQLite header
+  vs an XML/GDML document), so e.g. `detector.xml` works. Bare filenames resolve
+  exactly like `.db` files: CWD first, then `$SHIPGEOMETRY_ROOT/share/geometry/`.
+- **Parsing.** ROOT's `TGDMLParse` builds a TGeo tree once per run; the result
+  is cached, so the display's several passes (main, name scan, regions) parse
+  the file only once. An existing `gGeoManager` is left untouched.
+- **Units.** GDML lengths are converted to millimetres before anything is
+  emitted, so hits (mm on disk) and geometry line up exactly as with a `.db`.
+  Give lengths explicit `lunit`/`unit` attributes (Geant4 exports always do):
+  ROOT warns about unitless lengths and may not read them as mm.
+- **Names and filters.** `include`/`exclude`/`[[style]]`/region patterns match
+  GDML *logical volume* names (the `<volume name>`; a Geant4 `0x…` pointer
+  suffix is stripped by ROOT). Names generally differ from the GeoModel ones,
+  so run `--inspect` and adapt the view config to the file you load.
+- **Assemblies.** An `<assembly>` has no solid of its own, so it is never drawn;
+  the walk passes through it. If an assembly matches `include` (or a region's
+  `match`), its children count as matched — the assembly acts as a subsystem
+  envelope. `--inspect` and region `match` report assemblies with the z span of
+  their contents.
+- **Shapes.** All TGeo solids GDML produces are supported, including booleans,
+  polycones/polyhedra, extruded solids, ellipsoids and elliptical cones. Rarer
+  ones (tessellated, twisted) are drawn through a scaled wrapper; half-spaces
+  are skipped with a one-line warning.
+- **Cache.** `geo-cache` works on GDML too; replaying a cache never reopens the
+  GDML file.
+
+---
+
+## 7. The geometry cache
+
+Reading a ~1M-volume `.db` (or a large GDML file) takes seconds on every launch. The cache converts it
 once to a ROOT file the display loads quickly:
 
 ```
@@ -225,11 +270,12 @@ pixi run sc --geo-cache geocache --geometry files/ship_geometry.db \
 ```
 
 `geo-cache` writes `geocache.main.root` (envelopes) and `geocache.region.root`
-(deep walk). With `--geo-cache`, the display skips the GeoModel read entirely.
+(deep walk). With `--geo-cache`, the display skips the GeoModel/GDML read
+entirely.
 
 ---
 
-## 7. Versioning
+## 8. Versioning
 
 The version lives in the `VERSION` text file at the repo root, mirrored in
 `pixi.toml` (`[workspace] version`, per the ShipSoft pixi convention, readable
@@ -240,14 +286,17 @@ when publishing).
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 - **Web page shows chrome but no 3D** — check the browser console (F12). A
   blocked three.js CDN import (locked-down network) is the usual cause; vendor
   three.js under `web/js/vendor/` and point the import map at it.
 - **A region view is empty** — its window may not intersect this geometry;
   verify with `--inspect` and adjust `zmin/zmax`.
-- **Hits float away from the geometry** — the data and the loaded `.db` may be
-  from different detector layouts; check their z ranges match.
+- **Hits float away from the geometry** — the data and the loaded `.db`/`.gdml`
+  may be from different detector layouts; check their z ranges match. For GDML,
+  also check the file gives explicit length units.
+- **GDML loads but nothing is drawn** — the view config's `include` patterns
+  are probably GeoModel names. Run `--inspect` on the GDML file and adjust.
 - **REve right-click menu empty** — the navigator dictionary must be compiled
   into the executable, not the static library (see `CMakeLists.txt`).

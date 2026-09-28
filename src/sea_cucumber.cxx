@@ -3,7 +3,10 @@
 // =============================================================================
 //  sea_cucumber -- the SHiP event display.
 //
-//  Inputs: --geometry <ship.db>  --data <events.root>  [--view <view.toml>]
+//  Inputs: --geometry <ship.db|ship.gdml>  --data <events.root>  [--view <view.toml>]
+//
+//  The geometry may be a GeoModel SQLite .db or a GDML file; the backend is
+//  picked by MakeGeometrySource (extension, then file content).
 //
 //  Draws the detector geometry, the event HITS (pink, size ramped by energy)
 //  and the TRUTH decay-vertex marker. No fabricated tracks/reco.
@@ -46,14 +49,15 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <memory>
 #include <regex>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "EventNavigator.h"
-#include "GeoModelGeometrySource.h"
 #include "GeometryCache.h"
+#include "GeometrySourceFactory.h"
 #include "IEventSource.h"
 #include "IGeometrySource.h"
 #include "RNTupleEventSource.h"
@@ -164,7 +168,7 @@ class EventDisplay {
 
     // Whole-detector geometry (subsystem envelopes) into the large viewer.
     void loadGeometry(IGeometrySource& src) {
-        std::cout << "[sea_cucumber] reading geometry database..." << std::endl;
+        std::cout << "[sea_cucumber] reading geometry..." << std::endl;
         const auto t0 = std::chrono::steady_clock::now();
         const std::size_t n = src.provide(
             [&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& global, int) {
@@ -240,8 +244,8 @@ class EventDisplay {
     }
 
     // Resolve region windows by REPLAYING a geometry source (a cache), instead
-    // of scanning the live .db. Used on the --geo-cache path so the database is
-    // never touched. Costs one extra replay of the (already reduced) region
+    // of scanning the live geometry file. Used on the --geo-cache path so the
+    // .db / .gdml is never touched. Costs one extra replay of the (already reduced) region
     // cache -- cheap compared to a GeoModel build.
     std::pair<double, double> resolveRegionWindowsFromSource(IGeometrySource& src) {
         std::vector<double> lo(regions_.size(), 1e30), hi(regions_.size(), -1e30);
@@ -320,7 +324,7 @@ class EventDisplay {
             std::cout << "[sea_cucumber] scanning geometry for region windows (depth <= "
                       << scanOpt.max_depth << ")..." << std::endl;
             const auto t0 = std::chrono::steady_clock::now();
-            const std::size_t visited = ScanGeoModelDB(
+            const std::size_t visited = ScanGeometry(
                 dbPath, scanOpt, [&](const std::string& name, double z, double dz, int) {
                     // Use the measured extent when available so the window
                     // covers the whole subsystem, not just its origin.
@@ -763,7 +767,7 @@ class EventDisplay {
 namespace {
 void usage(const char* a0) {
     std::cerr << "Usage: " << a0
-              << " --geometry <ship.db> --data <events.root> [--view <view.toml>]\n"
+              << " --geometry <ship.db|ship.gdml> --data <events.root> [--view <view.toml>]\n"
                  "               [--ntuple <name>] [--event <i>] [--scale <f>] [--logo <dir>]\n"
                  "               [--geo-cache <prefix>]  use/require cached geometry (see "
                  "make_geometry_cache)\n"
@@ -864,8 +868,8 @@ int main(int argc, char* argv[]) {
         if (useFilter) filter = shipdisp::CompileNamePattern(inspectMatch, true);
 
         double gLo = 1e30, gHi = -1e30;
-        const std::string dbPath = shipdisp::ResolveGeometryDbPath(geometry);
-        const std::size_t visited = shipdisp::ScanGeoModelDB(
+        const std::string dbPath = shipdisp::ResolveGeometryPath(geometry);
+        const std::size_t visited = shipdisp::ScanGeometry(
             dbPath, io, [&](const std::string& n, double z, double dz, int d) {
                 if (useFilter && !std::regex_search(n, filter)) return;
                 auto& a = agg[n];
@@ -881,8 +885,9 @@ int main(int argc, char* argv[]) {
                 if (inspectAll) rows.push_back({n, z, dz, d});
             });
 
-        std::cout << "\n=== geometry inventory: " << dbPath << " (depth <= " << inspectDepth << ", "
-                  << visited << " volumes visited";
+        std::cout << "\n=== geometry inventory: " << dbPath << " ["
+                  << shipdisp::GeometryFormatName(shipdisp::DetectGeometryFormat(dbPath))
+                  << "] (depth <= " << inspectDepth << ", " << visited << " volumes visited";
         if (useFilter) std::cout << ", filter \"" << inspectMatch << "\"";
         std::cout << ") ===\n"
                   << "  copy a name (or a wildcard over it) into a region's `exclude` to hide "
@@ -932,7 +937,12 @@ int main(int argc, char* argv[]) {
     geoOpt.max_depth = view.geometry.max_depth;
     geoOpt.stop_at_match = view.geometry.stop_at_match;
     geoOpt.length_scale = view.hit_scale;
-    shipdisp::GeoModelGeometrySource geoSrc(geometry, geoOpt);
+    // .db -> GeoModel, .gdml -> GDML; both emit identically from here on.
+    const std::string geoPath = shipdisp::ResolveGeometryPath(geometry);
+    std::cout << "[sea_cucumber] geometry: " << geoPath << " ("
+              << shipdisp::GeometryFormatName(shipdisp::DetectGeometryFormat(geoPath)) << ")\n";
+    const std::unique_ptr<shipdisp::IGeometrySource> geoSrc =
+        shipdisp::MakeGeometrySource(geometry, geoOpt);
 
     // Deeper walk feeding the zoom regions.
     shipdisp::GeoLoadOptions regionOpt = geoOpt;
@@ -955,7 +965,7 @@ int main(int argc, char* argv[]) {
 
     // Prefer cached geometry when a valid cache is present: it skips the
     // multi-second GeoModel read entirely (ALICE O2 event-display pattern,
-    // arXiv:2503.00088). Falls back to the live .db otherwise.
+    // arXiv:2503.00088). Falls back to the live geometry file otherwise.
     const std::string mainCachePath = geoCache.empty() ? "" : geoCache + ".main.root";
     const std::string regionCachePath = geoCache.empty() ? "" : geoCache + ".region.root";
     const bool useCache = !geoCache.empty() &&
@@ -963,8 +973,8 @@ int main(int argc, char* argv[]) {
                           shipdisp::CachedGeometrySource::isValidCache(regionCachePath);
     if (!geoCache.empty() && !useCache) {
         std::cerr << "[sea_cucumber] geometry cache '" << geoCache
-                  << ".{main,region}.root' missing or stale -- falling back to the .db "
-                     "(run make_geometry_cache to build it)\n";
+                  << ".{main,region}.root' missing or stale -- falling back to '" << geometry
+                  << "' (run make_geometry_cache to build it)\n";
     }
 
     try {
@@ -972,7 +982,7 @@ int main(int argc, char* argv[]) {
             std::cout << "[sea_cucumber] using geometry cache '" << geoCache << ".*'\n";
             shipdisp::CachedGeometrySource mainCache(mainCachePath);
             ed.loadGeometry(mainCache);
-            // Resolve windows from the region cache (no .db touch), then replay
+            // Resolve windows from the region cache (no geometry read), then replay
             // it to build. The cache is already depth/exclude-bounded, so no z
             // restriction is needed.
             shipdisp::CachedGeometrySource regionScan(regionCachePath);
@@ -980,11 +990,11 @@ int main(int argc, char* argv[]) {
             shipdisp::CachedGeometrySource regionCache(regionCachePath);
             ed.loadRegionGeometry(regionCache);
         } else {
-            ed.loadGeometry(geoSrc);
+            ed.loadGeometry(*geoSrc);
 
             // Resolve the region windows with a cheap, shape-free scan, then
             // restrict the expensive walk to their union.
-            const auto [uLo, uHi] = ed.resolveRegionWindows(geoSrc.resolvedPath(), regionOpt);
+            const auto [uLo, uHi] = ed.resolveRegionWindows(geoPath, regionOpt);
             if (uHi > uLo && uLo > -1e29 && uHi < 1e29) {
                 const double pad = 0.1 * std::max(1.0, uHi - uLo);
                 regionOpt.use_z_window = true;
@@ -993,8 +1003,8 @@ int main(int argc, char* argv[]) {
                 std::cout << "[sea_cucumber] region walk restricted to z ["
                           << regionOpt.z_window_min << ", " << regionOpt.z_window_max << "] mm\n";
             }
-            shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
-            ed.loadRegionGeometry(regionSrc);
+            const auto regionSrc = shipdisp::MakeGeometrySource(geometry, regionOpt);
+            ed.loadRegionGeometry(*regionSrc);
         }
     } catch (const std::exception& e) {
         std::cerr << "[sea_cucumber] geometry load failed: " << e.what() << "\n";
