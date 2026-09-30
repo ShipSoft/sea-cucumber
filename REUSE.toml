@@ -29,3 +29,8 @@ SPDX-License-Identifier = "LGPL-3.0-or-later"
 path = ["web/data/**", "web/logo/**"]
 SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
 SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = [".prettierrc.json", ".stylelintrc.json"]
+SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
+SPDX-License-Identifier = "LGPL-3.0-or-later"

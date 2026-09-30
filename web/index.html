@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!--
   SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
   SPDX-License-Identifier: LGPL-3.0-or-later
@@ -29,8 +29,12 @@
       <!-- LEFT: control sidebar -->
       <aside class="side">
         <div class="brand">
-          <img class="brand__logo" src="logo/sc.png" alt="sea cucumber logo"
-               onerror="this.style.visibility='hidden'" />
+          <img
+            class="brand__logo"
+            src="logo/sc.png"
+            alt="sea cucumber logo"
+            onerror="this.style.visibility = 'hidden'"
+          />
           <span class="brand__name">sea cucumber</span>
           <span class="brand__ver mono" id="version"></span>
         </div>
@@ -43,8 +47,10 @@
             <button id="next" class="btn" title="Next event">&#8594;</button>
           </div>
           <dl class="readout">
-            <dt>hits</dt><dd id="nHits" class="mono">0</dd>
-            <dt>z range</dt><dd id="zRange" class="mono">–</dd>
+            <dt>hits</dt>
+            <dd id="nHits" class="mono">0</dd>
+            <dt>z range</dt>
+            <dd id="zRange" class="mono">–</dd>
           </dl>
         </section>
 
@@ -53,7 +59,8 @@
           <label class="toggle"><input type="checkbox" id="tGeo" checked /> geometry</label>
           <label class="toggle"><input type="checkbox" id="tHits" checked /> hits</label>
           <label class="toggle"><input type="checkbox" id="tVertex" checked /> decay vertex</label>
-          <label class="slider">hit size <span id="hitSizeVal" class="mono">4</span>
+          <label class="slider"
+            >hit size <span id="hitSizeVal" class="mono">4</span>
             <input type="range" id="hitSize" min="1" max="16" step="1" value="4" />
           </label>
         </section>

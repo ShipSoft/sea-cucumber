@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# Bulk reformats, skipped by: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (or --ignore-revs-file on the command line).
+
+# style: apply prettier and ruff format
+29c882f8695b3cffc07be6515f54a2358d207fa9
