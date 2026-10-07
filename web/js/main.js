@@ -149,9 +149,9 @@ class Panel {
     const d = r * 2.4;
     const dir = ({
       "3d": new THREE.Vector3(1, 0.7, 1),
-      side: new THREE.Vector3(0, 1, 0.0001),   // look along y (xz plane)
+      side: new THREE.Vector3(1, 0.0001, 0),   // look along x (zy, beamline profile)
       front: new THREE.Vector3(0.0001, 0, 1),  // look along z (xy, beam's-eye)
-      top: new THREE.Vector3(0, 1, 0.0001),
+      top: new THREE.Vector3(0, 1, 0.0001),    // look along y (xz, from above)
     }[view] || new THREE.Vector3(1, 0.7, 1)).normalize();
     this.camera.position.copy(c).addScaledVector(dir, d);
     this.camera.up.set(0, view === "top" ? 0 : 1, view === "top" ? -1 : 0);
@@ -840,11 +840,12 @@ function showPopout(title, build) {
   box.append(h, body);
   overlay.appendChild(box);
   document.body.appendChild(overlay);
-  const close = () => overlay.remove();
+  // One close path for all dismissals (overlay click, Escape, dialog buttons),
+  // so the Escape listener never outlives the dialog.
+  const esc = (e) => { if (e.key === "Escape") close(); };
+  const close = () => { window.removeEventListener("keydown", esc); overlay.remove(); };
   overlay.addEventListener("pointerdown", (e) => { if (e.target === overlay) close(); });
-  window.addEventListener("keydown", function esc(e) {
-    if (e.key === "Escape") { close(); window.removeEventListener("keydown", esc); }
-  });
+  window.addEventListener("keydown", esc);
   build(body, close);
 }
 
@@ -1019,8 +1020,11 @@ async function saveSetup() {
     const a = document.createElement("a");
     a.href = url;
     a.download = "sea_cucumber_setup.json";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    // Revoke on the next tick: a synchronous revoke can race the download.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
     setStatus("Server read-only — downloaded file; place it in configs/ to make it the default.");
   }
 }
