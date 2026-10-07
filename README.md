@@ -76,6 +76,39 @@ Flags: `--geometry <db>` (required), `--data <root>` (required), `--view <toml>`
 then `$SHIPGEOMETRY_ROOT/share/geometry/`, matching aegir. The aliases `sc`,
 `run_event_display`, and `ED` all launch it.
 
+## Configure
+
+The view config says what to draw and is meant to be shared. How the display
+*looks* to you — colour scheme, text sizes, menu width — belongs in your own
+config, which both tools find without being told, highest precedence first:
+
+```
+--config <path>                              # explicit; must exist
+$SEA_CUCUMBER_CONFIG                         # explicit; warns if it is gone
+./sea_cucumber.toml                          # project-local
+$XDG_CONFIG_HOME/sea_cucumber/config.toml    # default ~/.config/...
+$XDG_CONFIG_DIRS entries, then $CONDA_PREFIX/share/sea_cucumber/config.toml
+```
+
+Every file that exists is read, working up the list from the bottom, so a file
+nearer the top of it overrides the ones below. Each overrides only the keys it
+sets, and the result lands on top of the view config's `[ui]` block.
+`--no-config` skips the search.
+
+```toml
+[ui]
+color_scheme = "ship_midnight"   # any key of SCHEMES in web/js/schemes.js
+font_scale = 1.1
+[ui.fonts]
+menu = 14
+```
+
+Copy `configs/sea_cucumber.example.toml` to get started. In the browser you can
+override all of it again per browser: under **Colour scheme**, "Set as default"
+remembers the scheme and text sizes locally, "Revert" drops them. That layer is
+browser-side on purpose — whoever runs `make_web_data` and whoever is looking at
+the page need not be on the same machine.
+
 ## Inspect the geometry
 
 To find where subsystems sit in z (no data file needed):
