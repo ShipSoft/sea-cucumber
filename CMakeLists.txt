@@ -8,7 +8,7 @@
 # Recommended build is via pixi (see pixi.toml):
 #     pixi run build && pixi run test && pixi run lint
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21) # matches the pixi.toml pin
 project(sea_cucumber VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23) # matches the SHiP EDM (root_cxx_standard==23)
@@ -24,6 +24,11 @@ option(
     OFF
 )
 option(SEA_CUCUMBER_BUILD_TESTS "Build the CTest suite" ON)
+
+# Warnings for every target in this project (executables and tools included,
+# not just the core library). Directory-scoped, so the tests/ subdirectory
+# inherits it too; the generated dictionary TU comes along, which is fine.
+add_compile_options(-Wall -Wextra -Wpedantic)
 
 # --- ROOT: RNTuple needs 6.40+ and the ROOTNTuple component (per aegir) ------
 find_package(
@@ -116,8 +121,6 @@ if(SHIP_USE_GEOMETRY_SERVICE)
     # target_link_libraries(sea_cucumber_core PUBLIC SHiPGeometry::SHiPGeometryService)
 endif()
 
-target_compile_options(sea_cucumber_core PRIVATE -Wall -Wextra -Wpedantic)
-
 # --- the executable ----------------------------------------------------------
 add_executable(sea_cucumber src/sea_cucumber.cxx G__SeaCucumberNav.cxx)
 target_link_libraries(sea_cucumber PRIVATE sea_cucumber_core)
@@ -131,6 +134,11 @@ target_link_libraries(make_geometry_cache PRIVATE sea_cucumber_core)
 
 add_executable(make_web_data tools/make_web_data.cxx)
 target_link_libraries(make_web_data PRIVATE sea_cucumber_core)
+# Single source for the version shown by the web page: the project version.
+target_compile_definitions(
+    make_web_data
+    PRIVATE SEA_CUCUMBER_VERSION="${PROJECT_VERSION}"
+)
 
 # --- install -----------------------------------------------------------------
 include(GNUInstallDirs)
@@ -156,6 +164,15 @@ install(
     DIRECTORY logo/
     DESTINATION ${CMAKE_INSTALL_DATADIR}/sea_cucumber/logo
     OPTIONAL
+)
+# The static web frontend (three.js vendored), so an installed package can
+# serve the page directly. Generated display files (web/data, web/VERSION)
+# stay out; make_web_data produces them next to the served copy.
+install(
+    DIRECTORY web/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/sea_cucumber/web
+    PATTERN "data" EXCLUDE
+    PATTERN "VERSION" EXCLUDE
 )
 
 # --- tests -------------------------------------------------------------------
