@@ -10,7 +10,6 @@
 #include <ROOT/RNTupleWriter.hxx>
 
 #include <cstdio>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -18,19 +17,11 @@
 #include "SHiP/SimHit.hpp"
 #include "SHiP/SimParticle.hpp"
 #include "SHiP/SimResult.hpp"
-
-namespace {
-int failures = 0;
-void check(bool ok, const std::string& what) {
-    if (!ok) {
-        std::cerr << "FAIL: " << what << "\n";
-        ++failures;
-    }
-}
-}  // namespace
+#include "TestUtil.h"
 
 int main() {
-    const std::string path = "test_events_roundtrip.root";
+    using testutil::check;
+    const std::string path = testutil::tempPath("test_events_roundtrip.root");
 
     // --- write two events ----------------------------------------------------
     {
@@ -94,6 +85,5 @@ int main() {
 
     std::remove(path.c_str());
 
-    if (failures == 0) std::cout << "test_rntuple_roundtrip: OK\n";
-    return failures == 0 ? 0 : 1;
+    return testutil::summary("test_rntuple_roundtrip");
 }

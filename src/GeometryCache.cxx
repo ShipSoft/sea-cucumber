@@ -36,6 +36,29 @@ namespace shipdisp {
 namespace {
 constexpr const char* kTreeName = "shapes";
 constexpr const char* kScaleName = "scale";
+
+// Pack a TGeoHMatrix into a row-major 4x4 (rotation 3x3 + translation), and
+// back. One helper pair so the write and read layouts cannot drift.
+void packMatrix(const TGeoHMatrix& g, double (&xform)[16]) {
+    const Double_t* r = g.GetRotationMatrix();
+    const Double_t* t = g.GetTranslation();
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) xform[4 * row + col] = r[3 * row + col];
+        xform[4 * row + 3] = t[row];
+    }
+    xform[12] = xform[13] = xform[14] = 0.0;
+    xform[15] = 1.0;
+}
+
+TGeoHMatrix unpackMatrix(const double (&xform)[16]) {
+    TGeoHMatrix m;
+    double rot[9] = {xform[0], xform[1], xform[2], xform[4], xform[5],
+                     xform[6], xform[8], xform[9], xform[10]};
+    double tr[3] = {xform[3], xform[7], xform[11]};
+    m.SetRotation(rot);
+    m.SetTranslation(tr);
+    return m;
+}
 }  // namespace
 
 std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path, double scale,
@@ -61,24 +84,7 @@ std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path
     src.provide([&](const std::string& nm, TGeoShape* sh, const TGeoHMatrix& g, int d) {
         name = nm;
         depth = d;
-        const Double_t* r = g.GetRotationMatrix();
-        const Double_t* t = g.GetTranslation();
-        xform[0] = r[0];
-        xform[1] = r[1];
-        xform[2] = r[2];
-        xform[3] = t[0];
-        xform[4] = r[3];
-        xform[5] = r[4];
-        xform[6] = r[5];
-        xform[7] = t[1];
-        xform[8] = r[6];
-        xform[9] = r[7];
-        xform[10] = r[8];
-        xform[11] = t[2];
-        xform[12] = 0;
-        xform[13] = 0;
-        xform[14] = 0;
-        xform[15] = 1;
+        packMatrix(g, xform);
 
         // Wrap the shape in a concrete volume so ROOT can persist it (a bare
         // TGeoShape* branch can't be read back -- the base class is abstract).
@@ -152,12 +158,7 @@ std::size_t CachedGeometrySource::provide(const GeoEmit& emit) {
         tree->GetEntry(i);
         if (!vol || !vol->GetShape()) continue;
 
-        TGeoHMatrix m;
-        double rot[9] = {xform[0], xform[1], xform[2], xform[4], xform[5],
-                         xform[6], xform[8], xform[9], xform[10]};
-        double tr[3] = {xform[3], xform[7], xform[11]};
-        m.SetRotation(rot);
-        m.SetTranslation(tr);
+        const TGeoHMatrix m = unpackMatrix(xform);
 
         // The callback takes ownership of the shape, so hand it a clone rather
         // than the volume-owned original.
