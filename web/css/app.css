@@ -7,15 +7,6 @@
  * pink event data, cream text.
  */
 
-/* mononoki for the wordmark (and numeric readouts). Drop the woff2 into
- * web/fonts/ (see web/README.md); falls back to a monospace stack if absent. */
-@font-face {
-  font-family: "Mononoki";
-  src: url("../fonts/mononoki-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-display: swap;
-}
-
 :root {
   --font-scale: 1;   /* global multiplier on every category (set from [ui] font_scale / client) */
   /* Per-category base sizes (px). Editable live and via [ui.fonts] in the view
