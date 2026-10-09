@@ -1,0 +1,36 @@
+# --- build / environment -----------------------------------------------------
+build/
+.pixi/
+
+# --- generated web assets (produced by: pixi run web-data) -------------------
+# TODO Remove temporary commented out entries here when the docker building
+# process is able to fetch data from elsewhere.
+#web/data/
+web/VERSION
+# TODO Figure out how to deal with the logo, should be included in the repo?
+#web/logo/
+web/configs/
+web/fonts/*.woff2
+
+# --- geometry cache (produced by: pixi run geo-cache) ------------------------
+geocache.*.root
+*.geocache.root
+
+# --- input data & large binaries (kept out of the repo) ----------------------
+files/
+*.root
+# NOTE! Our current solution assumes ship_geometry.db exists in the source
+# directory and hence has to copy it into the build context
+#*.db
+*.tar.gz
+demo_events.root
+
+# --- saved view setups (keep only the checked-in default) --------------------
+configs/*.json
+!configs/sea_cucumber_default_setup.json
+
+# --- scratch -----------------------------------------------------------------
+volnames.txt
+volumes
+
+Dockerfile
