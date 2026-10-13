@@ -27,7 +27,7 @@
 
 #include "IGeometrySource.h"
 
-namespace shipdisp {
+namespace SHiP::display {
 
 class GeoModelGeometrySource : public IGeometrySource {
    public:
@@ -52,6 +52,6 @@ class GeoModelGeometrySource : public IGeometrySource {
 /// if nothing matched, so the caller's open emits the not-found error.
 std::string ResolveGeometryDbPath(const std::string& dbFile);
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_GEOMODEL_GEOMETRYSOURCE_H

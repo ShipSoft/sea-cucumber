@@ -31,7 +31,7 @@ void touch(const fs::path& p) {
 }  // namespace
 
 int main() {
-    using shipdisp::ResolveGeometryDbPath;
+    using SHiP::display::ResolveGeometryDbPath;
 
     // Absolute path is returned unchanged.
     check(ResolveGeometryDbPath("/nowhere/abs.db") == "/nowhere/abs.db", "absolute passthrough");

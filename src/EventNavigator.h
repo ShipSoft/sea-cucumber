@@ -26,7 +26,7 @@
 #include <functional>
 #include <string>
 
-namespace shipdisp {
+namespace SHiP::display {
 
 class EventNavigator : public ROOT::Experimental::REveElement {
    public:
@@ -59,6 +59,6 @@ class EventNavigator : public ROOT::Experimental::REveElement {
     ClassDef(EventNavigator, 1);  // ROOT dictionary macro
 };
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_EVENTNAVIGATOR_H

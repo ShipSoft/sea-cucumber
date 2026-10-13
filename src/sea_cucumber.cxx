@@ -61,7 +61,7 @@
 
 namespace REX = ROOT::Experimental;
 
-namespace shipdisp {
+namespace SHiP::display {
 
 namespace {
 
@@ -633,8 +633,8 @@ class EventDisplay {
         double lo = std::numeric_limits<double>::max();
         double hi = std::numeric_limits<double>::lowest();
         for (const auto& h : hits) {
-            lo = std::min(lo, h.energyDeposit);
-            hi = std::max(hi, h.energyDeposit);
+            lo = std::min(lo, h.energy_deposit);
+            hi = std::max(hi, h.energy_deposit);
         }
         const double span = (hi > lo) ? (hi - lo) : 1.0;
         const Color_t pink = hexColor(view_.hits.color_high);
@@ -668,7 +668,7 @@ class EventDisplay {
         std::vector<std::size_t> counts(regions_.size(), 0);
         for (const auto& h : hits) {
             int b = view_.hits.color_by_energy
-                        ? static_cast<int>((h.energyDeposit - lo) / span * (kBins - 1) + 0.5)
+                        ? static_cast<int>((h.energy_deposit - lo) / span * (kBins - 1) + 0.5)
                         : kBins - 1;
             b = std::clamp(b, 0, kBins - 1);
             const float x = sx(h.position[0]);
@@ -704,7 +704,7 @@ class EventDisplay {
         // daughters, i.e. the first MC particle that has a mother.
         const SHiP::MCParticle* v = nullptr;
         for (const auto& p : mc) {
-            if (p.motherId >= 0) {
+            if (p.mother_id >= 0) {
                 v = &p;
                 break;
             }
@@ -758,7 +758,7 @@ class EventDisplay {
     std::int64_t current_ = 0;
 };
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 namespace {
 void usage(const char* a0) {
@@ -833,7 +833,7 @@ int main(int argc, char* argv[]) {
         return 2;
     }
 
-    shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
+    SHiP::display::ViewConfig view = SHiP::display::LoadViewConfig(viewFile);
     if (scaleOverride > 0) view.hit_scale = scaleOverride;
     if (!ntuple.empty()) view.ntuple = ntuple;
 
@@ -841,7 +841,7 @@ int main(int argc, char* argv[]) {
     // Answers "where is each subsystem in z?" so region windows can be set from
     // fact rather than assumption. Uses the shape-free scan, so it is fast.
     if (inspectDepth >= 0) {
-        shipdisp::GeoLoadOptions io;
+        SHiP::display::GeoLoadOptions io;
         io.max_depth = inspectDepth;
         io.stop_at_match = false;
         io.icase = true;
@@ -861,11 +861,11 @@ int main(int argc, char* argv[]) {
 
         std::regex filter;
         const bool useFilter = !inspectMatch.empty();
-        if (useFilter) filter = shipdisp::CompileNamePattern(inspectMatch, true);
+        if (useFilter) filter = SHiP::display::CompileNamePattern(inspectMatch, true);
 
         double gLo = 1e30, gHi = -1e30;
-        const std::string dbPath = shipdisp::ResolveGeometryDbPath(geometry);
-        const std::size_t visited = shipdisp::ScanGeoModelDB(
+        const std::string dbPath = SHiP::display::ResolveGeometryDbPath(geometry);
+        const std::size_t visited = SHiP::display::ScanGeoModelDB(
             dbPath, io, [&](const std::string& n, double z, double dz, int d) {
                 if (useFilter && !std::regex_search(n, filter)) return;
                 auto& a = agg[n];
@@ -924,18 +924,18 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    shipdisp::RNTupleEventSource source(data, view.ntuple);
+    SHiP::display::RNTupleEventSource source(data, view.ntuple);
 
-    shipdisp::GeoLoadOptions geoOpt;
+    SHiP::display::GeoLoadOptions geoOpt;
     geoOpt.include = view.geometry.include;
     geoOpt.exclude = view.geometry.exclude;
     geoOpt.max_depth = view.geometry.max_depth;
     geoOpt.stop_at_match = view.geometry.stop_at_match;
     geoOpt.length_scale = view.hit_scale;
-    shipdisp::GeoModelGeometrySource geoSrc(geometry, geoOpt);
+    SHiP::display::GeoModelGeometrySource geoSrc(geometry, geoOpt);
 
     // Deeper walk feeding the zoom regions.
-    shipdisp::GeoLoadOptions regionOpt = geoOpt;
+    SHiP::display::GeoLoadOptions regionOpt = geoOpt;
     regionOpt.stop_at_match = false;  // descend past envelopes for real detail
     regionOpt.max_depth = view.region_depth;
     // geometry.exclude may hide subsystems the zoom regions need (e.g. the
@@ -949,7 +949,7 @@ int main(int argc, char* argv[]) {
     regionOpt.max_shapes = 50000;
 
     TApplication app("sea_cucumber", &argc, argv);
-    shipdisp::EventDisplay ed(view);
+    SHiP::display::EventDisplay ed(view);
     ed.init();
     ed.setSource(&source);
 
@@ -959,8 +959,8 @@ int main(int argc, char* argv[]) {
     const std::string mainCachePath = geoCache.empty() ? "" : geoCache + ".main.root";
     const std::string regionCachePath = geoCache.empty() ? "" : geoCache + ".region.root";
     const bool useCache = !geoCache.empty() &&
-                          shipdisp::CachedGeometrySource::isValidCache(mainCachePath) &&
-                          shipdisp::CachedGeometrySource::isValidCache(regionCachePath);
+                          SHiP::display::CachedGeometrySource::isValidCache(mainCachePath) &&
+                          SHiP::display::CachedGeometrySource::isValidCache(regionCachePath);
     if (!geoCache.empty() && !useCache) {
         std::cerr << "[sea_cucumber] geometry cache '" << geoCache
                   << ".{main,region}.root' missing or stale -- falling back to the .db "
@@ -970,14 +970,14 @@ int main(int argc, char* argv[]) {
     try {
         if (useCache) {
             std::cout << "[sea_cucumber] using geometry cache '" << geoCache << ".*'\n";
-            shipdisp::CachedGeometrySource mainCache(mainCachePath);
+            SHiP::display::CachedGeometrySource mainCache(mainCachePath);
             ed.loadGeometry(mainCache);
             // Resolve windows from the region cache (no .db touch), then replay
             // it to build. The cache is already depth/exclude-bounded, so no z
             // restriction is needed.
-            shipdisp::CachedGeometrySource regionScan(regionCachePath);
+            SHiP::display::CachedGeometrySource regionScan(regionCachePath);
             ed.resolveRegionWindowsFromSource(regionScan);
-            shipdisp::CachedGeometrySource regionCache(regionCachePath);
+            SHiP::display::CachedGeometrySource regionCache(regionCachePath);
             ed.loadRegionGeometry(regionCache);
         } else {
             ed.loadGeometry(geoSrc);
@@ -993,7 +993,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "[sea_cucumber] region walk restricted to z ["
                           << regionOpt.z_window_min << ", " << regionOpt.z_window_max << "] mm\n";
             }
-            shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
+            SHiP::display::GeoModelGeometrySource regionSrc(geometry, regionOpt);
             ed.loadRegionGeometry(regionSrc);
         }
     } catch (const std::exception& e) {

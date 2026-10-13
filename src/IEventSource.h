@@ -31,7 +31,7 @@
 #include "SHiP/SimHit.hpp"
 #include "SHiP/SimParticle.hpp"
 
-namespace shipdisp {
+namespace SHiP::display {
 
 class IEventSource {
    public:
@@ -54,6 +54,6 @@ class IEventSource {
     virtual const std::vector<SHiP::RecParticle>& recParticles() const = 0;
 };
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_IEVENTSOURCE_H

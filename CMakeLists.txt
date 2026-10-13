@@ -97,7 +97,7 @@ target_link_libraries(
         ROOT::ROOTEve
         ROOT::ROOTWebDisplay
         ROOT::ROOTNTuple
-        SHiP::SHiPDataModel
+        SHiP::DataModel
         GeoModelCore::GeoModelKernel
         GeoModelIO::GeoModelDBManager
         GeoModelIO::GeoModelRead
@@ -109,8 +109,8 @@ if(SHIP_USE_GEOMETRY_SERVICE)
         sea_cucumber_core
         PUBLIC SHIP_USE_GEOMETRY_SERVICE
     )
-    # find_package(SHiPGeometryService CONFIG REQUIRED)               # <-- confirm name
-    # target_link_libraries(sea_cucumber_core PUBLIC SHiPGeometry::SHiPGeometryService)
+    # find_package(SHiPGeometryService CONFIG REQUIRED)
+    # target_link_libraries(sea_cucumber_core PUBLIC SHiP::GeometryService)
 endif()
 
 target_compile_options(sea_cucumber_core PRIVATE -Wall -Wextra -Wpedantic)

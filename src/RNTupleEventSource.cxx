@@ -28,7 +28,7 @@
 
 #include "SHiP/SimResult.hpp"
 
-namespace shipdisp {
+namespace SHiP::display {
 
 namespace {
 // Shared empties returned when a field is absent, so accessors can hand back a
@@ -160,4 +160,4 @@ const std::vector<SHiP::RecParticle>& RNTupleEventSource::recParticles() const {
     return p_->rec.value ? *p_->rec.value : kNoRec;
 }
 
-}  // namespace shipdisp
+}  // namespace SHiP::display

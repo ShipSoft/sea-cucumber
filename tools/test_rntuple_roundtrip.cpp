@@ -44,9 +44,9 @@ int main() {
         hits->clear();
         {
             SHiP::SimHit h;
-            h.detectorId = 7;
+            h.detector_id = 7;
             h.position = {1.0, 2.0, 3.0};
-            h.energyDeposit = 0.5;
+            h.energy_deposit = 0.5;
             hits->push_back(h);
         }
         result->hits.clear();
@@ -57,16 +57,16 @@ int main() {
         hits->clear();
         for (int k = 0; k < 2; ++k) {
             SHiP::SimHit h;
-            h.detectorId = 100 + k;
+            h.detector_id = 100 + k;
             h.position = {double(k), 0.0, 10.0};
-            h.energyDeposit = 0.1 * (k + 1);
+            h.energy_deposit = 0.1 * (k + 1);
             hits->push_back(h);
         }
         result->hits.clear();
         result->particles.clear();
         {
             SHiP::SimParticle p;
-            p.pdgCode = 13;
+            p.pdg_code = 13;
             p.vertex = {0, 0, 0};
             p.endpoint = {0, 0, 100};
             result->particles.push_back(p);
@@ -75,13 +75,13 @@ int main() {
     }  // writer flushes and closes on destruction
 
     // --- read back -----------------------------------------------------------
-    shipdisp::RNTupleEventSource src(path, "events");
+    SHiP::display::RNTupleEventSource src(path, "events");
     check(src.numEvents() == 2, "numEvents == 2");
 
     check(src.loadEvent(0), "loadEvent(0)");
     check(src.hits().size() == 1, "event 0 has 1 hit");
     if (!src.hits().empty()) {
-        check(src.hits()[0].detectorId == 7, "event 0 hit detectorId == 7");
+        check(src.hits()[0].detector_id == 7, "event 0 hit detector_id == 7");
         check(src.hits()[0].position[2] == 3.0, "event 0 hit z == 3");
     }
 

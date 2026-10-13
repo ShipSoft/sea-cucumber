@@ -70,7 +70,7 @@
 #include <regex>
 #include <stdexcept>
 
-namespace shipdisp {
+namespace SHiP::display {
 
 namespace {
 
@@ -649,4 +649,4 @@ std::size_t LoadGeoModelDB(const std::string& db_path, const GeoLoadOptions& opt
     return WalkGeoModelWorld(world, opt, emit);
 }
 
-}  // namespace shipdisp
+}  // namespace SHiP::display

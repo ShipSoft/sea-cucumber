@@ -48,8 +48,8 @@ git = "*"
 # ROOT 6.40+, pinned to the C++23 standard variant to match the EDM dictionary.
 root = ">=6.40"
 root_cxx_standard = "==23"
-# Official SHiP event data model (SHiP::SHiPDataModel).
-shipdatamodel = "*"
+# Official SHiP event data model (SHiP::DataModel).
+shipdatamodel = ">=0.6.0"
 # Required transitively by SHiPDataModel's SHiP::SHiPUnits target.
 mp-units = ">=2.5"
 # GeoModel: GeoModelCore (Kernel) + GeoModelIO (DBManager, Read).

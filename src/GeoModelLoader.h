@@ -69,7 +69,7 @@ class TGeoShape;
 class TGeoHMatrix;
 class GeoVPhysVol;  // GeoModel world / physical volume (from SHiPGeometryService or direct open)
 
-namespace shipdisp {
+namespace SHiP::display {
 
 struct GeoLoadOptions {
     // ECMAScript regexes.  A volume is a candidate iff it matches at least
@@ -177,6 +177,6 @@ const GeoVPhysVol* GetCachedGeoModelWorld(const std::string& db_path);
 std::size_t LoadGeoModelDB(const std::string& db_path, const GeoLoadOptions& opt,
                            const GeoEmit& emit);
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_GEOMODEL_LOADER_H

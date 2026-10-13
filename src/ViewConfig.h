@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-namespace shipdisp {
+namespace SHiP::display {
 
 /// Any volume whose name contains `match` is drawn with `color` (hex) at
 /// `transparency` (0..100). First matching rule wins.
@@ -174,6 +174,6 @@ struct ViewConfig {
 ViewConfig LoadViewConfig(const std::string& path);
 ViewConfig DefaultViewConfig();
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_VIEWCONFIG_H

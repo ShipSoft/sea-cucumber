@@ -3,6 +3,14 @@
 # Hooks run via `prek` (see pixi.toml [feature.lint]); tool versions are pinned
 # in pixi, so hooks invoke the environment-provided tools as system commands.
 repos:
+  # Shared ShipSoft hooks. forbid-ship-namespace refuses namespace spellings
+  # clang-tidy cannot express: `ship` is lower_case and so passes NamespaceCase,
+  # but it is the pre-2026 spelling the collaboration migrated off.
+  - repo: https://github.com/ShipSoft/.github
+    rev: v1.0.0
+    hooks:
+      - id: forbid-ship-namespace
+
   - repo: local
     hooks:
       - id: clang-format
