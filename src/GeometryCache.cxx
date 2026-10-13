@@ -28,7 +28,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace shipdisp {
+namespace SHiP::display {
 
 namespace {
 constexpr const char* kTreeName = "shapes";
@@ -156,4 +156,4 @@ std::size_t CachedGeometrySource::provide(const GeoEmit& emit) {
     return n;
 }
 
-}  // namespace shipdisp
+}  // namespace SHiP::display

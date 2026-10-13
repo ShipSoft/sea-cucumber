@@ -25,7 +25,7 @@
 
 #include "GeoModelLoader.h"
 
-namespace shipdisp {
+namespace SHiP::display {
 
 std::string ResolveGeometryDbPath(const std::string& dbFile) {
     namespace fs = std::filesystem;
@@ -58,4 +58,4 @@ std::size_t GeoModelGeometrySource::provide(const GeoEmit& emit) {
 #endif
 }
 
-}  // namespace shipdisp
+}  // namespace SHiP::display

@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace shipdisp {
+namespace SHiP::display {
 
 namespace {
 
@@ -277,4 +277,4 @@ ViewConfig LoadViewConfig(const std::string& path) {
     return c;
 }
 
-}  // namespace shipdisp
+}  // namespace SHiP::display

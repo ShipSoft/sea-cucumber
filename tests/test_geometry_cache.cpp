@@ -28,9 +28,9 @@ void check(bool ok, const std::string& what) {
 }
 
 // A provider that emits three boxes at known z positions.
-class FakeSource : public shipdisp::IGeometrySource {
+class FakeSource : public SHiP::display::IGeometrySource {
    public:
-    std::size_t provide(const shipdisp::GeoEmit& emit) override {
+    std::size_t provide(const SHiP::display::GeoEmit& emit) override {
         for (int i = 0; i < 3; ++i) {
             auto* box = new TGeoBBox(10.0 + i, 20.0 + i, 30.0 + i);
             TGeoHMatrix m;
@@ -48,15 +48,15 @@ int main() {
 
     {
         FakeSource src;
-        const std::size_t n = shipdisp::WriteGeometryCache(src, path, "unit test");
+        const std::size_t n = SHiP::display::WriteGeometryCache(src, path, "unit test");
         check(n == 3, "wrote 3 shapes");
     }
 
-    check(shipdisp::CachedGeometrySource::isValidCache(path), "cache is recognised as valid");
-    check(!shipdisp::CachedGeometrySource::isValidCache("does_not_exist.root"),
+    check(SHiP::display::CachedGeometrySource::isValidCache(path), "cache is recognised as valid");
+    check(!SHiP::display::CachedGeometrySource::isValidCache("does_not_exist.root"),
           "missing file is not a valid cache");
 
-    shipdisp::CachedGeometrySource cache(path);
+    SHiP::display::CachedGeometrySource cache(path);
     std::vector<std::string> names;
     std::vector<double> zs, dzs;
     const std::size_t n =

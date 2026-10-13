@@ -45,17 +45,17 @@ int main(int argc, char* argv[]) {
         return 2;
     }
 
-    const shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
+    const SHiP::display::ViewConfig view = SHiP::display::LoadViewConfig(viewFile);
 
     // Mirror the display's two walks exactly, so the caches are drop-in.
-    shipdisp::GeoLoadOptions mainOpt;
+    SHiP::display::GeoLoadOptions mainOpt;
     mainOpt.include = view.geometry.include;
     mainOpt.exclude = view.geometry.exclude;
     mainOpt.max_depth = view.geometry.max_depth;
     mainOpt.stop_at_match = view.geometry.stop_at_match;
     mainOpt.length_scale = view.hit_scale;
 
-    shipdisp::GeoLoadOptions regionOpt = mainOpt;
+    SHiP::display::GeoLoadOptions regionOpt = mainOpt;
     regionOpt.stop_at_match = false;
     regionOpt.max_depth = view.region_depth;
     if (view.has_region_exclude) regionOpt.exclude = view.region_exclude;
@@ -67,12 +67,12 @@ int main(int argc, char* argv[]) {
     regionOpt.max_shapes = 5000000;
 
     try {
-        shipdisp::GeoModelGeometrySource mainSrc(geometry, mainOpt);
-        shipdisp::WriteGeometryCache(mainSrc, outPrefix + ".main.root",
-                                     "main envelope pass of " + geometry);
+        SHiP::display::GeoModelGeometrySource mainSrc(geometry, mainOpt);
+        SHiP::display::WriteGeometryCache(mainSrc, outPrefix + ".main.root",
+                                          "main envelope pass of " + geometry);
 
-        shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
-        shipdisp::WriteGeometryCache(
+        SHiP::display::GeoModelGeometrySource regionSrc(geometry, regionOpt);
+        SHiP::display::WriteGeometryCache(
             regionSrc, outPrefix + ".region.root",
             "region deep pass (depth " + std::to_string(regionOpt.max_depth) + ") of " + geometry);
     } catch (const std::exception& e) {

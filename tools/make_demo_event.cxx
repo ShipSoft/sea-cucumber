@@ -97,13 +97,13 @@ struct GeoInfo {
 GeoInfo loadGeometry(const std::string& db) {
     GeoInfo g;
     if (db.empty()) return g;
-    shipdisp::GeoLoadOptions opt;
+    SHiP::display::GeoLoadOptions opt;
     opt.stop_at_match = false;
     opt.max_depth = 6;
     opt.length_scale = 1.0;
     opt.verbose = false;
     try {
-        shipdisp::LoadGeoModelDB(
+        SHiP::display::LoadGeoModelDB(
             db, opt, [&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& m, int) {
                 const Double_t* t = m.GetTranslation();
                 g.centres[classify(name)].push_back({t[0], t[1], t[2]});
@@ -211,11 +211,11 @@ int main(int argc, char* argv[]) {
         const Vec3 pMother = {uni(-0.2, 0.2), uni(-0.2, 0.2), Pm};
         {
             SHiP::MCParticle m;
-            m.pdgCode = 9900015;  // HNL-like placeholder
+            m.pdg_code = 9900015;  // HNL-like placeholder
             m.vertex = {0, 0, zTarget};
             m.momentum = pMother;
             m.energy = std::sqrt(Pm * Pm + 1.0);
-            m.motherId = -1;
+            m.mother_id = -1;
             m.status = 2;
             mcP->push_back(m);
         }
@@ -231,24 +231,24 @@ int main(int argc, char* argv[]) {
             const Vec3 dir = scale(p, 1.0 / p[2]);
             {
                 SHiP::MCParticle mc;
-                mc.pdgCode = pdg[d];
+                mc.pdg_code = pdg[d];
                 mc.vertex = vtx;  // <-- the truth decay vertex the display marks
                 mc.momentum = p;
                 mc.energy = std::sqrt(norm(p) * norm(p) + 0.105 * 0.105);
-                mc.motherId = 0;
+                mc.mother_id = 0;
                 mc.status = 1;
                 mcP->push_back(mc);
             }
             auto hit = [&](const Vec3& x, std::int32_t id, double edep) {
                 SHiP::SimHit h;
-                h.detectorId = id;
-                h.trackId = d + 1;
-                h.pdgCode = pdg[d];
+                h.detector_id = id;
+                h.track_id = d + 1;
+                h.pdg_code = pdg[d];
                 h.position = x;
                 h.momentum = p;
-                h.energyDeposit = edep;
+                h.energy_deposit = edep;
                 h.time = norm(add(x, scale(vtx, -1))) / 299.792458;
-                h.pathLength = 10;
+                h.path_length = 10;
                 simH->push_back(h);
             };
             // Downstream tracker stations + timing.

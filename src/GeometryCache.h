@@ -40,7 +40,7 @@
 #include "GeoModelLoader.h"  // GeoEmit
 #include "IGeometrySource.h"
 
-namespace shipdisp {
+namespace SHiP::display {
 
 // Version tag written into every cache; bump when the on-disk layout changes.
 inline constexpr const char* kGeometryCacheTag = "sea_cucumber_cache";
@@ -69,6 +69,6 @@ class CachedGeometrySource : public IGeometrySource {
     std::string path_;
 };
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_GEOMETRYCACHE_H

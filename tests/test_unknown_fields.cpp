@@ -59,7 +59,7 @@ void check(bool ok, const std::string& what) {
         {
             auto writer = ROOT::RNTupleWriter::Recreate(std::move(model), "events", path);
             SHiP::SimHit h;
-            h.detectorId = 42;
+            h.detector_id = 42;
             h.position = {1.0, 2.0, 3.0};
             hits->push_back(h);
             writer->Fill();
@@ -102,11 +102,11 @@ int main() {
     }
 
     // The event source must still read the fields it knows about.
-    shipdisp::RNTupleEventSource src(path, "events");
+    SHiP::display::RNTupleEventSource src(path, "events");
     check(src.numEvents() == 1, "numEvents == 1");
     check(src.loadEvent(0), "loadEvent(0)");
     check(src.hits().size() == 1, "event 0 has 1 hit");
-    if (!src.hits().empty()) check(src.hits()[0].detectorId == 42, "hit detectorId == 42");
+    if (!src.hits().empty()) check(src.hits()[0].detector_id == 42, "hit detector_id == 42");
     check(src.mcParticles().empty(), "absent mc_particles reads as empty");
 
     std::remove(path.c_str());

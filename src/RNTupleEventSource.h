@@ -25,7 +25,7 @@
 //      `event_header`, or collections from a newer data model than this build
 //      was compiled against. Only the fields above need a dictionary.
 //
-//  Requires ROOT 6.40+ (ROOTNTuple component) and links SHiP::SHiPDataModel,
+//  Requires ROOT 6.40+ (ROOTNTuple component) and links SHiP::DataModel,
 //  matching aegir's dependency set. The RNTuple headers are kept out of this
 //  header via pimpl so the display core includes only IEventSource.
 // =============================================================================
@@ -35,7 +35,7 @@
 
 #include "IEventSource.h"
 
-namespace shipdisp {
+namespace SHiP::display {
 
 class RNTupleEventSource : public IEventSource {
    public:
@@ -61,6 +61,6 @@ class RNTupleEventSource : public IEventSource {
     std::unique_ptr<Impl> p_;
 };
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_RNTUPLE_EVENTSOURCE_H

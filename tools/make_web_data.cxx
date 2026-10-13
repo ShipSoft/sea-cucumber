@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
         return 2;
     }
 
-    const shipdisp::ViewConfig view = shipdisp::LoadViewConfig(viewFile);
+    const SHiP::display::ViewConfig view = SHiP::display::LoadViewConfig(viewFile);
 
     // Make the output directory (portable: shell out to mkdir -p).
     // Best-effort: copy the square logo next to the served page so the sidebar
@@ -253,7 +253,7 @@ int main(int argc, char* argv[]) {
     // detector geometry, not just the outer shells. Descend past envelopes
     // (stop_at_match = false) to a bounded depth, drop the big cavern/world
     // shells, and cap the shape count so the JSON stays a sane size.
-    shipdisp::GeoLoadOptions opt;
+    SHiP::display::GeoLoadOptions opt;
     opt.include = view.geometry.include;
     opt.exclude = view.geometry.exclude;
     if (view.has_region_exclude)
@@ -275,7 +275,7 @@ int main(int argc, char* argv[]) {
     std::size_t nMesh = 0, nSkipped = 0;
     bool firstMesh = true;
     try {
-        shipdisp::GeoModelGeometrySource src(geometry, opt);
+        SHiP::display::GeoModelGeometrySource src(geometry, opt);
         src.provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
             // Colour: an explicit per-volume match colour from the config wins;
             // otherwise pick from a curated palette by hashing the name. It is
@@ -313,7 +313,7 @@ int main(int argc, char* argv[]) {
               << " empty/skipped)\n";
 
     // --- events -------------------------------------------------------------
-    shipdisp::RNTupleEventSource source(dataFile, view.ntuple);
+    SHiP::display::RNTupleEventSource source(dataFile, view.ntuple);
     const std::int64_t nEv = source.numEvents();
     std::int64_t lo = 0, hi = nEv;
     if (eventsArg != "all") {
@@ -336,15 +336,15 @@ int main(int argc, char* argv[]) {
             const auto& sh = hits[h];
             if (h) ej << ',';
             ej << "{\"x\":" << sh.position[0] << ",\"y\":" << sh.position[1]
-               << ",\"z\":" << sh.position[2] << ",\"e\":" << sh.energyDeposit
-               << ",\"pdg\":" << sh.pdgCode << "}";
+               << ",\"z\":" << sh.position[2] << ",\"e\":" << sh.energy_deposit
+               << ",\"pdg\":" << sh.pdg_code << "}";
         }
         ej << "]";
 
         // Truth decay vertex: first MC particle that has a mother.
         const auto& mc = source.mcParticles();
         for (const auto& p : mc) {
-            if (p.motherId >= 0) {
+            if (p.mother_id >= 0) {
                 ej << ",\"vertex\":{\"x\":" << p.vertex[0] << ",\"y\":" << p.vertex[1]
                    << ",\"z\":" << p.vertex[2] << "}";
                 break;

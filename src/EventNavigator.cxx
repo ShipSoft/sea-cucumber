@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <iostream>
 
-ClassImp(shipdisp::EventNavigator);
+ClassImp(SHiP::display::EventNavigator);
 
-namespace shipdisp {
+namespace SHiP::display {
 
 void EventNavigator::Configure(std::function<void(std::int64_t)> go, std::int64_t nEvents,
                                std::int64_t current) {
@@ -48,4 +48,4 @@ void EventNavigator::PrintStatus() {
     std::cout << "[EventNavigator] event " << fCurrent << " of " << fNum << "\n";
 }
 
-}  // namespace shipdisp
+}  // namespace SHiP::display

@@ -19,9 +19,9 @@
 
 #include <cstddef>
 
-#include "GeoModelLoader.h"  // shipdisp::GeoEmit, GeoLoadOptions
+#include "GeoModelLoader.h"  // SHiP::display::GeoEmit, GeoLoadOptions
 
-namespace shipdisp {
+namespace SHiP::display {
 
 class IGeometrySource {
    public:
@@ -33,6 +33,6 @@ class IGeometrySource {
     virtual std::size_t provide(const GeoEmit& emit) = 0;
 };
 
-}  // namespace shipdisp
+}  // namespace SHiP::display
 
 #endif  // SHIPDISP_IGEOMETRYSOURCE_H
