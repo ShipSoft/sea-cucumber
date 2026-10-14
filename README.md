@@ -62,12 +62,12 @@ pixi run web        # open http://localhost:8080
 In the browser you get a control sidebar, a main 3D view, and any number of
 floating views you create and shape interactively — draw a region on a view to
 open it as a zoom, resize/stack/lock views, recolour borders, and save or load
-the whole layout. See the [manual](docs/MANUAL.md) for the full interface.
+the whole layout. See the [manual](docs/manual.md) for the full interface.
 
 ## Run — ROOT REve display
 
 ```
-pixi run sc --geometry ship_geometry.db --data output.root --view views/default.toml --event 0
+pixi run run --geometry ship_geometry.db --data output.root --view views/default.toml --event 0
 ```
 
 Flags: `--geometry <db>` (required), `--data <root>` (required), `--view <toml>`,
@@ -81,8 +81,8 @@ then `$SHIPGEOMETRY_ROOT/share/geometry/`, matching aegir. The aliases `sc`,
 To find where subsystems sit in z (no data file needed):
 
 ```
-pixi run sc --geometry ship_geometry.db --inspect 4
-pixi run sc --geometry ship_geometry.db --inspect 6 --inspect-match "*snd*"
+pixi run run --geometry ship_geometry.db --inspect 4
+pixi run run --geometry ship_geometry.db --inspect 6 --inspect-match "*snd*"
 ```
 
 ## Geometry cache
@@ -92,7 +92,7 @@ REve display loads quickly:
 
 ```
 pixi run geo-cache --geometry ship_geometry.db --view views/default.toml
-pixi run sc --geo-cache geocache --geometry ship_geometry.db --data output.root
+pixi run run --geo-cache geocache --geometry ship_geometry.db --data output.root
 ```
 
 ## Architecture
@@ -101,7 +101,7 @@ pixi run sc --geo-cache geocache --geometry ship_geometry.db --data output.root
   .db  ---->  IGeometrySource  (GeoModelGeometrySource / CachedGeometrySource)
                      |
                      v
-  view.toml -->  [ core ]  --->  REve viewer          (pixi run sc)
+  view.toml -->  [ core ]  --->  REve viewer          (pixi run run)
                      |     \-->  make_web_data (JSON)  --->  three.js frontend
                      ^                                        (pixi run web)
                      |
@@ -130,7 +130,7 @@ via `include`/`exclude` regexes to keep both viewers responsive.
 
 ## Documentation
 
-- [docs/MANUAL.md](docs/MANUAL.md) — full user and developer reference.
+- [docs/manual.md](docs/manual.md) — full user and developer reference.
 - [docs/RELEASING.md](docs/RELEASING.md) — versioning and changelog workflow.
 
 ## Status
