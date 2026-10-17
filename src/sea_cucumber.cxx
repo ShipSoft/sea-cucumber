@@ -46,11 +46,13 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <optional>
 #include <regex>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "ArgParse.h"
 #include "EventNavigator.h"
 #include "GeoModelGeometrySource.h"
 #include "GeometryCache.h"
@@ -172,7 +174,7 @@ class EventDisplay {
                 es->SetShape(shape);
                 es->RefMainTrans().SetFrom(const_cast<TGeoHMatrix&>(global));
                 es->SetMainColor(geoColor(name));
-                es->SetMainTransparency(static_cast<Char_t>(view_.transparencyForVolume(name)));
+                es->SetMainTransparency(static_cast<Char_t>(geoTransparency(name)));
                 geoHolder_->AddElement(es);
             });
         const auto t1 = std::chrono::steady_clock::now();
@@ -239,6 +241,21 @@ class EventDisplay {
         return {uLo, uHi};
     }
 
+    // Matchers for the regions whose window must be derived from volume
+    // names, indexed like regions_ (nullopt where no derivation is needed).
+    // One shared compiler for both resolvers below; CompileNamePattern makes
+    // glob patterns ("*snd*") work and matching case-insensitive, exactly
+    // like the name scan.
+    std::vector<std::optional<std::regex>> regionMatchers() const {
+        std::vector<std::optional<std::regex>> res(regions_.size());
+        for (std::size_t k = 0; k < regions_.size(); ++k) {
+            const auto& c = regions_[k].cfg;
+            if (c.hasAnyWindow() || c.match.empty()) continue;
+            res[k] = CompileNamePattern(c.match, /*icase=*/true);
+        }
+        return res;
+    }
+
     // Resolve region windows by REPLAYING a geometry source (a cache), instead
     // of scanning the live .db. Used on the --geo-cache path so the database is
     // never touched. Costs one extra replay of the (already reduced) region
@@ -246,25 +263,13 @@ class EventDisplay {
     std::pair<double, double> resolveRegionWindowsFromSource(IGeometrySource& src) {
         std::vector<double> lo(regions_.size(), 1e30), hi(regions_.size(), -1e30);
         std::vector<std::size_t> nmatch(regions_.size(), 0);
-        std::vector<std::regex> res(regions_.size());
-        std::vector<bool> useRgx(regions_.size(), false);
-        for (std::size_t k = 0; k < regions_.size(); ++k) {
-            const auto& c = regions_[k].cfg;
-            if (c.hasAnyWindow() || c.match.empty()) continue;
-            try {
-                res[k] = std::regex(c.match, std::regex::ECMAScript | std::regex::icase);
-                useRgx[k] = true;
-            } catch (const std::regex_error& e) {
-                std::cerr << "[sea_cucumber] region '" << c.name << "': bad match regex ("
-                          << e.what() << ")\n";
-            }
-        }
+        const auto res = regionMatchers();
         src.provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
             const double z = g.GetTranslation()[2] / scale_;
             double dz = 0.0;
             if (const auto* bb = dynamic_cast<const TGeoBBox*>(shape)) dz = bb->GetDZ() / scale_;
             for (std::size_t k = 0; k < regions_.size(); ++k) {
-                if (useRgx[k] && std::regex_search(name, res[k])) {
+                if (res[k] && std::regex_search(name, *res[k])) {
                     lo[k] = std::min(lo[k], z - dz);
                     hi[k] = std::max(hi[k], z + dz);
                     ++nmatch[k];
@@ -285,21 +290,9 @@ class EventDisplay {
         // Per-region accumulators for the name-derived windows.
         std::vector<double> lo(regions_.size(), 1e30), hi(regions_.size(), -1e30);
         std::vector<std::size_t> nmatch(regions_.size(), 0);
-        std::vector<std::regex> res(regions_.size());
-        std::vector<bool> useRgx(regions_.size(), false);
+        const auto res = regionMatchers();
 
         if (needScan) {
-            for (std::size_t k = 0; k < regions_.size(); ++k) {
-                const auto& c = regions_[k].cfg;
-                if (c.hasAnyWindow() || c.match.empty()) continue;
-                try {
-                    res[k] = std::regex(c.match, std::regex::ECMAScript | std::regex::icase);
-                    useRgx[k] = true;
-                } catch (const std::regex_error& e) {
-                    std::cerr << "[sea_cucumber] region '" << c.name << "': bad match regex ("
-                              << e.what() << ")\n";
-                }
-            }
             GeoLoadOptions scanOpt = baseOpt;
             // Bounded depth: the scan descends through NON-matching volumes, so
             // an unbounded one walks the entire geometry. Subsystem envelopes
@@ -326,8 +319,7 @@ class EventDisplay {
                     // covers the whole subsystem, not just its origin.
                     const double half = (dz >= 0.0) ? dz : 0.0;
                     for (std::size_t k = 0; k < regions_.size(); ++k) {
-                        if (!useRgx[k]) continue;
-                        if (std::regex_search(name, res[k])) {
+                        if (res[k] && std::regex_search(name, *res[k])) {
                             lo[k] = std::min(lo[k], z - half);
                             hi[k] = std::max(hi[k], z + half);
                             ++nmatch[k];
@@ -406,7 +398,13 @@ class EventDisplay {
                 for (int ax = 0; ax < 3 && inAll; ++ax) {
                     if (!r.has[ax]) continue;
                     const double win = r.hi[ax] - r.lo[ax];
-                    const double tol = 0.25 * std::max(1.0, win);
+                    // Overhang allowance: a volume may stick out up to this
+                    // fraction of the window per side before it counts as
+                    // "oversized" and is rejected. The web client applies the
+                    // same idea as a total-length cap (WINDOW_OVERSIZE_FACTOR
+                    // in main.js, 1.5 = 1 + 2 * 0.25).
+                    constexpr double kOverhangFrac = 0.25;
+                    const double tol = kOverhangFrac * std::max(1.0, win);
                     if (rec.c[ax] < r.lo[ax] || rec.c[ax] > r.hi[ax]) {
                         inAll = false;
                         break;
@@ -496,7 +494,7 @@ class EventDisplay {
                 d->RefMainTrans().SetFrom(shifted);
                 d->SetMainColor(geoColor(rec->name));
                 d->SetMainTransparency(static_cast<Char_t>(
-                    std::min(view_.transparencyForVolume(rec->name), r.cfg.max_transparency)));
+                    std::min(geoTransparency(rec->name), r.cfg.max_transparency)));
                 r.geoHolder->AddElement(d);
             }
 
@@ -618,14 +616,17 @@ class EventDisplay {
 
     float sx(double mm) const { return static_cast<float>(mm * scale_); }
 
-    // Config style if the name matches one; otherwise vary between blue and
-    // cream by a stable name hash, so the palette is used even on geometries
-    // whose volume names we don't recognise.
+    // Config style if the name matches a rule; otherwise a stable name-hash
+    // pick from ViewConfig's shared fallback palette (the same one the web
+    // producer uses), so the two displays colour unmatched volumes alike.
     Color_t geoColor(const std::string& name) const {
-        const std::string& c = view_.colorForVolume(name);
-        if (c != view_.geometry.default_color) return hexColor(c);
-        const std::size_t h = std::hash<std::string>{}(name);
-        return hexColor((h % 4 == 0) ? "#F1DEBC" : view_.geometry.default_color);
+        if (const auto* s = view_.styleForVolume(name)) return hexColor(s->color);
+        return hexColor(view_.fallbackColorForVolume(name));
+    }
+
+    int geoTransparency(const std::string& name) const {
+        const auto* s = view_.styleForVolume(name);
+        return s ? s->transparency : view_.geometry.default_transparency;
     }
 
     void drawHits(const std::vector<SHiP::SimHit>& hits) {
@@ -784,13 +785,7 @@ int main(int argc, char* argv[]) {
     bool inspectAll = false;       // list every instance instead of aggregating
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
-        auto next = [&](const char* n) -> std::string {
-            if (i + 1 >= argc) {
-                std::cerr << "missing value for " << n << "\n";
-                std::exit(2);
-            }
-            return argv[++i];
-        };
+        auto next = [&](const char* n) { return shipdisp::args::NextValue(argc, argv, i, n); };
         if (a == "--geometry") {
             geometry = next("--geometry");
         } else if (a == "--data") {
@@ -802,9 +797,9 @@ int main(int argc, char* argv[]) {
         } else if (a == "--geo-cache") {
             geoCache = next("--geo-cache");
         } else if (a == "--event") {
-            event = std::atoll(next("--event").c_str());
+            event = shipdisp::args::ParseNumber<std::int64_t>(next("--event"), "--event");
         } else if (a == "--scale") {
-            scaleOverride = std::atof(next("--scale").c_str());
+            scaleOverride = shipdisp::args::ParseNumber<double>(next("--scale"), "--scale");
         } else if (a == "--logo") {
             logoDir = next("--logo");
         } else if (a == "--inspect-match") {
@@ -812,9 +807,10 @@ int main(int argc, char* argv[]) {
         } else if (a == "--inspect-all") {
             inspectAll = true;
         } else if (a == "--inspect") {
-            // Optional depth; defaults to 2 when the next token is another flag.
-            if (i + 1 < argc && argv[i + 1][0] != '-') {
-                inspectDepth = std::atoi(next("--inspect").c_str());
+            // Optional depth; defaults to 2 when the next token is another
+            // flag (or missing/empty).
+            if (i + 1 < argc && argv[i + 1][0] != '\0' && argv[i + 1][0] != '-') {
+                inspectDepth = shipdisp::args::ParseNumber<int>(next("--inspect"), "--inspect");
             } else {
                 inspectDepth = 2;
             }

@@ -40,6 +40,7 @@
 #include <utility>
 #include <vector>
 
+#include "ArgParse.h"
 #include "GeoModelGeometrySource.h"
 #include "IEventSource.h"
 #include "RNTupleEventSource.h"
@@ -191,7 +192,7 @@ int main(int argc, char* argv[]) {
     std::size_t webMaxShapes = 20000;  // keep geometry.json a sane size
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
-        auto nxt = [&]() { return (i + 1 < argc) ? argv[++i] : ""; };
+        auto nxt = [&]() { return shipdisp::args::NextValue(argc, argv, i, a.c_str()); };
         if (a == "--geometry")
             geometry = nxt();
         else if (a == "--data")
@@ -202,24 +203,24 @@ int main(int argc, char* argv[]) {
             outDir = nxt();
         else if (a == "--events")
             eventsArg = nxt();
-        else if (a == "--depth" || a == "--max-shapes") {
-            const std::string v = nxt();
-            std::int64_t n = 0;
-            try {
-                n = std::stoll(v);
-            } catch (const std::exception&) {
-                std::cerr << "error: " << a << " needs a numeric value (got '" << v << "')\n";
+        else if (a == "--depth") {
+            webDepth = shipdisp::args::ParseNumber<int>(nxt(), "--depth");
+            // A negative depth switches GeoModelLoader's bound off altogether,
+            // which is how a typo turns into an unbounded walk.
+            if (webDepth < 0) {
+                std::cerr << "error: --depth cannot be negative\n";
                 return 2;
             }
-            if (a == "--depth")
-                webDepth = static_cast<int>(n);
-            else
-                webMaxShapes = static_cast<std::size_t>(n);
-        } else if (a == "-h" || a == "--help") {
+        } else if (a == "--max-shapes")
+            webMaxShapes = shipdisp::args::ParseNumber<std::size_t>(nxt(), "--max-shapes");
+        else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_web_data --geometry ship.db --data events.root "
                          "[--view v.toml] [--out web/data] [--events all|<i>] "
                          "[--depth 4] [--max-shapes 20000]\n";
             return 0;
+        } else {
+            std::cerr << "error: unknown option '" << a << "' (see --help)\n";
+            return 2;
         }
     }
     if (geometry.empty() || dataFile.empty()) {
@@ -294,24 +295,12 @@ int main(int argc, char* argv[]) {
     try {
         shipdisp::GeoModelGeometrySource src(geometry, opt);
         src.provide([&](const std::string& name, TGeoShape* shape, const TGeoHMatrix& g, int) {
-            // Colour: an explicit per-volume match colour from the config wins;
-            // otherwise pick from a curated palette by hashing the name. It is
-            // blue-dominant (six blues) with a cream and a muted purple worked
-            // in for variety, and deliberately excludes the bright hit pink
-            // (#C64284) so hits stay clearly visible against the geometry.
-            static const char* kPalette[] = {"#0A1F44", "#12305F", "#20428A", "#3A6BBF",
-                                             "#6E97D6", "#A9C4E8", "#E8CFA0", "#7A6A9E"};
-            const std::string matched = view.colorForVolume(name);
-            std::string color = matched;
-            if (matched == view.geometry.default_color) {
-                std::size_t h = 1469598103934665603ull;  // FNV-1a over the name
-                for (char c : name) {
-                    h ^= static_cast<unsigned char>(c);
-                    h *= 1099511628211ull;
-                }
-                color = kPalette[h % (sizeof(kPalette) / sizeof(kPalette[0]))];
-            }
-            const int transp = view.transparencyForVolume(name);
+            // Colour: an explicit per-volume style rule from the config wins;
+            // otherwise ViewConfig's shared fallback palette (the same hash
+            // the REve display uses, so the two displays agree).
+            const shipdisp::SubsystemStyle* st = view.styleForVolume(name);
+            const std::string color = st ? st->color : view.fallbackColorForVolume(name);
+            const int transp = st ? st->transparency : view.geometry.default_transparency;
             if (writeMesh(gj, name, shape, g, color, transp, firstMesh)) {
                 firstMesh = false;
                 ++nMesh;
@@ -334,12 +323,12 @@ int main(int argc, char* argv[]) {
     const std::int64_t nEv = source.numEvents();
     std::int64_t lo = 0, hi = nEv;
     if (eventsArg != "all") {
-        std::int64_t one = 0;
-        try {
-            one = std::stoll(eventsArg);
-        } catch (const std::exception&) {
-            std::cerr << "error: --events needs 'all' or an event index (got '" << eventsArg
-                      << "')\n";
+        const std::int64_t one = shipdisp::args::ParseNumber<std::int64_t>(eventsArg, "--events");
+        // Bound the index before `one + 1`, which overflows at INT64_MAX, and
+        // so that an index past the end reports itself instead of quietly
+        // writing no event at all.
+        if (one < 0 || one >= nEv) {
+            std::cerr << "error: --events " << one << " is outside [0, " << nEv << ")\n";
             return 2;
         }
         lo = one;
@@ -380,10 +369,6 @@ int main(int argc, char* argv[]) {
     std::cout << "[make_web_data] wrote " << written << " event file(s)\n";
 
     // --- manifest.json ------------------------------------------------------
-    // Include the region definitions so the web client can build the three zoom
-    // panels (Spectrometer / Calorimeter / SND), mirroring the REve views.
-    // Only explicit windows are emitted; name-derived (`match`) regions would
-    // need the geometry scan and are left for the client to ignore for now.
     const std::string mp = outDir + "/manifest.json";
     std::ofstream mj(mp);
     // Both producers emit native mm; the frontends scale. Deriving the web
@@ -403,46 +388,9 @@ int main(int argc, char* argv[]) {
             mj << "\"" << jsonEscape(k) << "\":" << v;
         }
     }
-    mj << "}},\"regions\":[";
-    bool firstR = true;
-    for (const auto& r : view.regions) {
-        if (!r.hasAnyWindow()) continue;  // client can't place a match-only region
-        if (!firstR) mj << ",";
-        firstR = false;
-        mj << "{\"name\":\"" << jsonEscape(r.name) << "\",\"camera\":\"" << jsonEscape(r.camera)
-           << "\",\"window\":{";
-        static const char* kAx[3] = {"x", "y", "z"};
-        bool firstAx = true;
-        for (int ax = 0; ax < 3; ++ax) {
-            if (!r.has_window[ax]) continue;
-            if (!firstAx) mj << ",";
-            firstAx = false;
-            mj << "\"" << kAx[ax] << "\":[" << r.wmin[ax] << "," << r.wmax[ax] << "]";
-        }
-        mj << "}";  // close window
-        // Optional panel layout (CSS px). Emitted only when set, so the client
-        // can fall back to a default cascade otherwise.
-        if (r.panel_x >= 0 || r.panel_y >= 0 || r.panel_w >= 0 || r.panel_h >= 0) {
-            mj << ",\"panel\":{";
-            bool firstP = true;
-            auto emitP = [&](const char* k, double val) {
-                if (val < 0) return;
-                if (!firstP) mj << ",";
-                firstP = false;
-                mj << "\"" << k << "\":" << val;
-            };
-            emitP("x", r.panel_x);
-            emitP("y", r.panel_y);
-            emitP("w", r.panel_w);
-            emitP("h", r.panel_h);
-            mj << "}";
-        }
-        mj << "}";  // close region
-    }
-    mj << "]}\n";
+    mj << "}}}\n";
     mj.close();
-    std::cout << "[make_web_data] manifest.json: " << nEv << " events, geometry.json, "
-              << "regions emitted\n"
+    std::cout << "[make_web_data] manifest.json: " << nEv << " events, geometry.json\n"
               << "[make_web_data] done -> " << outDir << " (serve with: pixi run web)\n";
     return 0;
 }
