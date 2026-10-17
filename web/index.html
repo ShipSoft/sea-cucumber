@@ -14,11 +14,13 @@
     <title>sea cucumber</title>
     <link rel="icon" type="image/png" href="logo/sc.png" />
     <link rel="stylesheet" href="css/app.css" />
+    <!-- three.js is vendored (web/vendor/three, v0.160.0, MIT) so the page
+         works offline and behind firewalls that block CDNs. -->
     <script type="importmap">
       {
         "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+          "three": "./vendor/three/three.module.min.js",
+          "three/addons/": "./vendor/three/addons/"
         }
       }
     </script>

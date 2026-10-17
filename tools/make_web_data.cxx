@@ -252,6 +252,10 @@ int main(int argc, char* argv[]) {
                               fs::copy_options::overwrite_existing, ec);
             }
         }
+        // Serve the project version next to the page (shown in the sidebar).
+        // Baked in at build time from the CMake project version, so there is
+        // exactly one place the version lives.
+        std::ofstream(webRoot / "VERSION") << SEA_CUCUMBER_VERSION << "\n";
     }
     {
         std::error_code ec;

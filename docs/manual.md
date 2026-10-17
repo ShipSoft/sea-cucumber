@@ -51,11 +51,11 @@ sea_cucumber is a pixi workspace. All workflows go through pixi tasks:
 | `pixi run build` | Configure + compile (CMake + Ninja). |
 | `pixi run test` | Build, then run the CTest suite. |
 | `pixi run lint` | Run the pre-commit hooks (formatting, cpplint, REUSE…). |
-| `pixi run sea_cucumber …` (aliases `sc`, `run_event_display`, `ED`) | Launch the REve display. |
+| `pixi run run …` (alias `sc`) | Launch the REve display. |
 | `pixi run web-data …` | Produce the web display files into `web/data`. |
 | `pixi run web` | Serve `web/` at http://localhost:8080. |
 | `pixi run geo-cache …` | Build a geometry cache to speed up REve start-up. |
-| `pixi run clean` | Remove the build directory. |
+| `pixi run clean` | Remove the build directory and geometry caches. |
 
 ### The REve display
 
@@ -80,6 +80,21 @@ pixi run web        # open http://localhost:8080
 `web-data` flags: `--geometry`, `--data`, `--view`, `--out <dir>` (default
 `web/data`), `--events all|<i>`, `--depth <n>` (walk depth, default 4),
 `--max-shapes <n>` (cap, default 20000).
+
+An installed package (`pixi run install`, or the conda package) ships the page
+under `<prefix>/share/sea_cucumber/web` without any display files. Point
+`make_web_data` at that copy, then serve it (`<prefix>` is `$CONDA_PREFIX` for
+the conda package):
+
+```
+make_web_data --geometry ship_geometry.db --data output.root --view views/default.toml \
+              --out <prefix>/share/sea_cucumber/web/data
+python -m http.server 8080 --directory <prefix>/share/sea_cucumber/web
+```
+
+When `--out` ends in `data`, `VERSION` goes into the directory above it, next
+to `index.html`. If the prefix is read-only, copy the `web` directory somewhere
+writable and use that path in both commands.
 
 ---
 
@@ -117,7 +132,8 @@ The view config drives the REve display and seeds the web producer. Globals:
 
 `db_file`, `include`, `exclude` (regex or glob), `max_depth`, `stop_at_match`,
 `default_color` (hex), `default_transparency`. Volumes matching a `[[style]]`
-get that colour; unmatched volumes get `default_color`.
+get that colour; unmatched volumes get a deterministic colour picked from the
+shared fallback palette by hashing the name, identically in both displays.
 
 ### `[hits]` and `[decay]`
 
@@ -231,20 +247,22 @@ pixi run sc --geo-cache geocache --geometry files/ship_geometry.db \
 
 ## 7. Versioning
 
-The version lives in the `VERSION` text file at the repo root, mirrored in
-`pixi.toml` (`[workspace] version`, per the ShipSoft pixi convention, readable
-with `pixi workspace version get`) and in `CITATION.cff`. The web producer copies
-`VERSION` next to the served page, and the frontend shows it under the wordmark.
-To release, bump all three in step (and the conda recipe in `ship-conda-recipes`
-when publishing).
+The version lives in `pixi.toml` (`[workspace] version`, per the ShipSoft pixi
+convention, readable with `pixi workspace version get`), in the CMake
+`project()` version, and in `CITATION.cff`. The web producer bakes the CMake
+version in at build time and writes it next to the served page
+(`web/VERSION`); the frontend shows it under the wordmark. To release, bump
+all three in step (and the conda recipe in `ship-conda-recipes` when
+publishing).
 
 ---
 
 ## 8. Troubleshooting
 
-- **Web page shows chrome but no 3D** — check the browser console (F12). A
-  blocked three.js CDN import (locked-down network) is the usual cause; vendor
-  three.js under `web/js/vendor/` and point the import map at it.
+- **Web page shows chrome but no 3D** — check the browser console (F12).
+  three.js is vendored under `web/vendor/three/` (no network needed), so the
+  usual cause is missing or stale `web/data/` files — re-run
+  `pixi run web-data …`.
 - **A region view is empty** — its window may not intersect this geometry;
   verify with `--inspect` and adjust `zmin/zmax`.
 - **Hits float away from the geometry** — the data and the loaded `.db` may be
