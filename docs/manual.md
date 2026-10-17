@@ -81,6 +81,21 @@ pixi run web        # open http://localhost:8080
 `web/data`), `--events all|<i>`, `--depth <n>` (walk depth, default 4),
 `--max-shapes <n>` (cap, default 20000).
 
+An installed package (`pixi run install`, or the conda package) ships the page
+under `<prefix>/share/sea_cucumber/web` without any display files. Point
+`make_web_data` at that copy, then serve it (`<prefix>` is `$CONDA_PREFIX` for
+the conda package):
+
+```
+make_web_data --geometry ship_geometry.db --data output.root --view views/default.toml \
+              --out <prefix>/share/sea_cucumber/web/data
+python -m http.server 8080 --directory <prefix>/share/sea_cucumber/web
+```
+
+When `--out` ends in `data`, `VERSION` goes into the directory above it, next
+to `index.html`. If the prefix is read-only, copy the `web` directory somewhere
+writable and use that path in both commands.
+
 ---
 
 ## 3. Inspecting the geometry
