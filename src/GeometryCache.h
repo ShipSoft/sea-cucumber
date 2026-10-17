@@ -44,13 +44,15 @@ namespace shipdisp {
 
 // Version tag written into every cache; bump when the on-disk layout changes.
 inline constexpr const char* kGeometryCacheTag = "sea_cucumber_cache";
-inline constexpr int kGeometryCacheVersion = 1;
+inline constexpr int kGeometryCacheVersion = 2;  // v2: adds the "scale" parameter
 
-// Capture everything `src` emits (at the length scale it was configured with)
-// into a display cache at `out_path`. `provenance` is a free-form note stored
-// in the file (e.g. the source .db path and options) for later inspection.
-// Returns the number of shapes written. Throws on I/O failure.
-std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path,
+// Capture everything `src` emits into a display cache at `out_path`. `scale` is
+// the mm->scene length scale the source was configured with (view.hit_scale);
+// it is stored in the file so a replay under a different scale can be detected
+// instead of silently mis-scaling the geometry. `provenance` is a free-form
+// note stored in the file (e.g. the source .db path and options) for later
+// inspection. Returns the number of shapes written. Throws on I/O failure.
+std::size_t WriteGeometryCache(IGeometrySource& src, const std::string& out_path, double scale,
                                const std::string& provenance = "");
 
 // An IGeometrySource that replays a display cache written by the above. Cheap
@@ -64,6 +66,11 @@ class CachedGeometrySource : public IGeometrySource {
     // True if `path` exists, opens, and carries a compatible cache tag. Lets
     // the app fall back to the live geometry when the cache is absent/stale.
     static bool isValidCache(const std::string& path);
+
+    // The mm->scene scale the cache was written at (see WriteGeometryCache),
+    // or NaN when the file is missing/foreign. Callers must refuse (or
+    // rescale) a cache whose scale differs from the current view's.
+    static double cachedScale(const std::string& path);
 
    private:
     std::string path_;

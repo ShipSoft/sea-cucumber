@@ -68,12 +68,12 @@ int main(int argc, char* argv[]) {
 
     try {
         shipdisp::GeoModelGeometrySource mainSrc(geometry, mainOpt);
-        shipdisp::WriteGeometryCache(mainSrc, outPrefix + ".main.root",
+        shipdisp::WriteGeometryCache(mainSrc, outPrefix + ".main.root", view.hit_scale,
                                      "main envelope pass of " + geometry);
 
         shipdisp::GeoModelGeometrySource regionSrc(geometry, regionOpt);
         shipdisp::WriteGeometryCache(
-            regionSrc, outPrefix + ".region.root",
+            regionSrc, outPrefix + ".region.root", view.hit_scale,
             "region deep pass (depth " + std::to_string(regionOpt.max_depth) + ") of " + geometry);
     } catch (const std::exception& e) {
         std::cerr << "[make_geometry_cache] failed: " << e.what() << "\n";
