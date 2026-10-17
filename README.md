@@ -43,7 +43,7 @@ pixi run lint        # prek: clang-format, cpplint, gersemi, cmakelint, codespel
 ```
 
 `build` depends on `configure`; `test` on `build`. SHiP-specific packages
-(`shipdatamodel`, `geomodel`) resolve from the `prefix.dev/ship` channel, the
+(`shipdatamodel`, `geomodel`) resolve from the `prefix.dev/ship-experiment/stable` channel, the
 rest from conda-forge — the same setup as aegir.
 
 ## Run — web frontend

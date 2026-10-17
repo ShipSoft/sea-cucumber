@@ -5,9 +5,9 @@
 name = "sea_cucumber"
 version = "0.1.0"
 description = "REve event display for the SHiP experiment"
-# SHiP-specific packages (shipdatamodel, geomodel, ...) come from prefix.dev/ship,
+# SHiP-specific packages (shipdatamodel, geomodel, ...) come from prefix.dev/ship-experiment/stable,
 # exactly as aegir resolves them; everything else from conda-forge.
-channels = ["https://prefix.dev/ship", "conda-forge"]
+channels = ["https://prefix.dev/ship-experiment/stable", "conda-forge"]
 # linux-64 only, matching data-model / geometry / aegir (no osx-arm64 builds of
 # the SHiP packages exist on the channel).
 platforms = ["linux-64"]
