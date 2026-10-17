@@ -165,9 +165,10 @@ install(
     DESTINATION ${CMAKE_INSTALL_DATADIR}/sea_cucumber/logo
     OPTIONAL
 )
-# The static web frontend (three.js vendored), so an installed package can
-# serve the page directly. Generated display files (web/data, web/VERSION)
-# stay out; make_web_data produces them next to the served copy.
+# The static web frontend (three.js vendored). Generated display files
+# (web/data, web/VERSION) stay out: run make_web_data with
+# --out <prefix>/share/sea_cucumber/web/data before serving the installed
+# copy (docs/manual.md, "The web display").
 install(
     DIRECTORY web/
     DESTINATION ${CMAKE_INSTALL_DATADIR}/sea_cucumber/web
