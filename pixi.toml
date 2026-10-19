@@ -27,14 +27,14 @@ run = { cmd = "./build/sea_cucumber", depends-on = ["build"] }
 demo = { cmd = "bash tools/run_demo.sh", depends-on = ["build"] }
 # Just write demo_events.root (append --geometry <db>):
 demo-event = { cmd = "./build/make_demo_event --output demo_events.root", depends-on = ["build"] }
-# Build the geometry cache so the display starts without re-reading the .db.
+# Build the geometry cache so the display starts without re-reading the .db/.gdml.
 #   pixi run geo-cache --geometry /path/ship_geometry.db --view views/default.toml
 # then run with:  pixi run run --geo-cache geocache --geometry ... --data ...
 geo-cache = { cmd = "./build/make_geometry_cache --out-prefix geocache", depends-on = ["build"] }
 # Serve the web frontend (static files) for local development.
 #   pixi run web        -> http://localhost:8080  (open web/index.html)
 # Point the page at produced data with ?data=... ; see web/README.md.
-# Produce the web display files from a .db + data file into web/data.
+# Produce the web display files from a .db or .gdml + data file into web/data.
 #   pixi run web-data --geometry files/ship_geometry.db --data files/llp_display.root --view views/default.toml
 web-data = { cmd = "./build/make_web_data --out web/data", depends-on = ["build"] }
 web = "python -m http.server 8080 --directory web"

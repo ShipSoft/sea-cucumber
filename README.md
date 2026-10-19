@@ -9,11 +9,12 @@
 
 <p align="center">The SHiP event display.</p>
 
-sea_cucumber reads a GeoModel geometry database and the official SHiP RNTuple
-data model and renders geometry and events. It takes three inputs and nothing
-else — a GeoModel `.db`, an RNTuple data file in the SHiP event data model, and
-an optional TOML view config — and links no analysis or framework code, so it
-runs independently of how the data was produced.
+sea_cucumber reads a GeoModel geometry database (or a GDML file) and the
+official SHiP RNTuple data model and renders geometry and events. It takes three
+inputs and nothing else — a GeoModel `.db` or a `.gdml` geometry, an RNTuple
+data file in the SHiP event data model, and an optional TOML view config — and
+links no analysis or framework code, so it runs independently of how the data
+was produced.
 
 There are **two viewers**, sharing one core:
 
@@ -23,7 +24,7 @@ There are **two viewers**, sharing one core:
   option.
 
 Following the ALICE O2 event-display design ([arXiv:2503.00088](https://arxiv.org/abs/2503.00088)),
-the C++ side is a *producer*: it loads the `.db`, reads the data model, resolves
+the C++ side is a *producer*: it loads the geometry, reads the data model, resolves
 colours, and (for the web path) tessellates geometry into display files; the web
 frontend then just *renders* them. Nothing about the physics or geometry is
 re-interpreted at view time.
@@ -38,7 +39,7 @@ does: it links [SHiPDataModel](https://github.com/ShipSoft/data-model), reads th
 
 ```
 pixi run build       # configure + build
-pixi run test        # ctest (RNTuple round-trip, DB resolution, geometry cache)
+pixi run test        # ctest (RNTuple round-trip, DB resolution, geometry cache, GDML)
 pixi run lint        # prek: clang-format, cpplint, gersemi, cmakelint, codespell, reuse
 ```
 
@@ -70,10 +71,26 @@ the whole layout. See the [manual](docs/MANUAL.md) for the full interface.
 pixi run sc --geometry ship_geometry.db --data output.root --view views/default.toml --event 0
 ```
 
-Flags: `--geometry <db>` (required), `--data <root>` (required), `--view <toml>`,
+Flags: `--geometry <db|gdml>` (required), `--data <root>` (required), `--view <toml>`,
 `--ntuple <name>` (default `events`), `--event <i>`, `--scale <f>`, `--logo <dir>`,
 `--geo-cache <prefix>`. A bare `--geometry` filename is resolved against the CWD,
-then `$SHIPGEOMETRY_ROOT/share/geometry/`, matching aegir. The aliases `sc`,
+then `$SHIPGEOMETRY_ROOT/share/geometry/`, matching aegir.
+
+## GDML geometry
+
+Anywhere a `.db` is accepted, a GDML file works too — `sc`, `web-data`,
+`geo-cache`, `demo`, and `--inspect`:
+
+```
+pixi run sc --geometry ship_geometry.gdml --data output.root --view views/default.toml
+pixi run sc --geometry ship_geometry.gdml --inspect 4
+```
+
+The format is chosen by extension (`.gdml` / `.db`), or by file content for any
+other extension. GDML is parsed with ROOT's `TGDMLParse`, converted to mm, and
+walked with the same include/exclude/depth/z-window rules as a `.db`. GDML volume
+names usually differ from the GeoModel ones, so use `--inspect` to adapt the
+view config's patterns. See the [manual](docs/manual.md#6-gdml-geometry). The aliases `sc`,
 `run_event_display`, and `ED` all launch it.
 
 ## Inspect the geometry
@@ -98,7 +115,9 @@ pixi run sc --geo-cache geocache --geometry ship_geometry.db --data output.root
 ## Architecture
 
 ```
-  .db  ---->  IGeometrySource  (GeoModelGeometrySource / CachedGeometrySource)
+  .db   --+
+          +->  IGeometrySource  (GeoModel / Gdml / CachedGeometrySource,
+  .gdml --+                      picked by MakeGeometrySource)
                      |
                      v
   view.toml -->  [ core ]  --->  REve viewer          (pixi run sc)
@@ -124,6 +143,8 @@ collections are missing. Positions are millimetres on disk.
 
 `GeoModelGeometrySource` obtains the GeoModel world (via `SHiPGeometryService`
 when built with `-DSHIP_USE_GEOMETRY_SERVICE=ON`, else directly with GeoModelIO).
+`GdmlGeometrySource` parses a `.gdml` file into TGeo with `TGDMLParse` and emits
+the same shapes, in the same units, under the same filtering rules.
 For REve it becomes REve shapes; for the web it is tessellated to triangle meshes
 via `TBuffer3D`. Dense replicated subsystems (straws, tiles) should be filtered
 via `include`/`exclude` regexes to keep both viewers responsive.

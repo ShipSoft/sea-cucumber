@@ -5,7 +5,7 @@
 # Generate a demo event and display it, using the SAME geometry for both.
 # Invoked by `pixi run demo`; pass --geometry <db> (and any extra sea_cucumber
 # flags, e.g. --event N) after it:
-#     pixi run demo --geometry /path/to/ship_geometry.db
+#     pixi run demo --geometry /path/to/ship_geometry.db   (or a .gdml)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
