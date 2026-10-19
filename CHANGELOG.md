@@ -14,6 +14,7 @@
 - TOML view config; pixi build/test/lint tasks.
 
 ### Fixed
+-  Web Display. Fix Top and Side views. They do not show the same view anymore.
 - `RNTupleEventSource` no longer aborts on files containing fields it does not
   display (e.g. aegir's `event_header`): each displayed collection is read
   through its own `RNTupleView`, so other fields are never reconstructed and
