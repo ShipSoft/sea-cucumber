@@ -237,6 +237,9 @@ int main(int argc, char* argv[]) {
     {
         // outDir is typically web/data, so the web root is its parent.
         fs::path webRoot = fs::path(outDir).lexically_normal();
+        // lexically_normal keeps a trailing separator ("web/data/"), which
+        // leaves filename() empty; drop it so the "data" check still matches.
+        if (webRoot.filename().empty()) webRoot = webRoot.parent_path();
         if (webRoot.filename() == "data") webRoot = webRoot.parent_path();
         std::error_code ec;
         fs::create_directories(webRoot / "logo", ec);
