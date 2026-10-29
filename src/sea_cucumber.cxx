@@ -76,18 +76,18 @@ Color_t hexColor(const std::string& s, Color_t fb = kGray) {
 
 // Camera orientation.
 //
-// ROOT's ECameraType names ("XOY", "XOZ", "ZOY") do NOT map onto the intuitive
-// "which plane am I looking at" reading -- kCameraOrthoXOY shows the detector
-// extended along the beam, i.e. it looks along x/y, not along z. So the config
-// uses INTENT names, with the raw enum names available as an escape hatch:
+// ROOT's ECameraType names give the plane on screen, horizontal axis first:
+// kCameraOrthoZOY has z across and y up, so it looks along x. The config
+// accepts intent names, or the plane on screen in either order, and the
+// web client (frame() in web/js/main.js) understands the same names:
 //
-//   "side"  / "xz"  -- detector seen lengthways        (kCameraOrthoXOZ)
-//   "top"   / "xy0" -- from above, also lengthways     (kCameraOrthoXOY)
-//   "front" / "xy"  -- facing the beam, cross-section  (kCameraOrthoZOY)
-//   "3d"    / "persp"                                  (kCameraPerspXOZ)
+//   "side"  / "zy" / "yz" -- looking along x, beam across  (kCameraOrthoZOY)
+//   "top"   / "xz" / "zx" -- looking along y, from above   (kCameraOrthoXOZ)
+//   "front" / "xy" / "yx" -- looking along z, beam's-eye   (kCameraOrthoXOY)
+//   "3d"    / "persp"                                      (kCameraPerspXOZ)
 //
-// Raw names ("orthoxoy", "orthoxoz", "orthozoy", "perspxoz") bypass all of
-// this if the intent names still don't land where you expect.
+// Raw names ("orthoxoy", "orthoxoz", "orthozoy", "perspxoz") pick the ROOT
+// enum directly.
 REX::REveViewer::ECameraType cameraFor(const std::string& c) {
     // --- raw enum names ------------------------------------------------------
     if (c == "orthoxoy") return REX::REveViewer::kCameraOrthoXOY;
@@ -95,20 +95,20 @@ REX::REveViewer::ECameraType cameraFor(const std::string& c) {
     if (c == "orthozoy") return REX::REveViewer::kCameraOrthoZOY;
     if (c == "perspxoz") return REX::REveViewer::kCameraPerspXOZ;
     // --- intent names --------------------------------------------------------
-    if (c == "front" || c == "xy" || c == "yx") return REX::REveViewer::kCameraOrthoZOY;
-    if (c == "top" || c == "xy0") return REX::REveViewer::kCameraOrthoXOY;
+    if (c == "front" || c == "xy" || c == "yx") return REX::REveViewer::kCameraOrthoXOY;
+    if (c == "top" || c == "xz" || c == "zx") return REX::REveViewer::kCameraOrthoXOZ;
     if (c == "3d" || c == "persp") return REX::REveViewer::kCameraPerspXOZ;
-    return REX::REveViewer::kCameraOrthoXOZ;  // "side" / "xz" (default)
+    return REX::REveViewer::kCameraOrthoZOY;  // "side" / "zy" / "yz" (default)
 }
 
 // Human-readable description of what a camera name resolves to, so the log can
 // be correlated with what actually appears on screen.
 const char* cameraDesc(const std::string& c) {
-    if (c == "orthoxoy" || c == "top" || c == "xy0") return "kCameraOrthoXOY (top)";
-    if (c == "orthozoy" || c == "front" || c == "xy" || c == "yx")
-        return "kCameraOrthoZOY (front, facing the beam)";
+    if (c == "orthoxoy" || c == "front" || c == "xy" || c == "yx")
+        return "kCameraOrthoXOY (front, facing the beam)";
+    if (c == "orthoxoz" || c == "top" || c == "xz" || c == "zx") return "kCameraOrthoXOZ (top)";
     if (c == "perspxoz" || c == "3d" || c == "persp") return "kCameraPerspXOZ (perspective)";
-    return "kCameraOrthoXOZ (side)";
+    return "kCameraOrthoZOY (side)";
 }
 
 }  // namespace
@@ -948,7 +948,9 @@ int main(int argc, char* argv[]) {
     // guard -- keep it well above what a single sub-detector needs.
     regionOpt.max_shapes = 50000;
 
-    TApplication app("sea_cucumber", &argc, argv);
+    // Our own loop above has already consumed argv; hand ROOT an empty argument
+    // list so TApplication does not re-parse (and warn about) our options.
+    TApplication app("sea_cucumber", nullptr, nullptr);
     SHiP::display::EventDisplay ed(view);
     ed.init();
     ed.setSource(&source);
@@ -958,13 +960,30 @@ int main(int argc, char* argv[]) {
     // arXiv:2503.00088). Falls back to the live .db otherwise.
     const std::string mainCachePath = geoCache.empty() ? "" : geoCache + ".main.root";
     const std::string regionCachePath = geoCache.empty() ? "" : geoCache + ".region.root";
-    const bool useCache = !geoCache.empty() &&
-                          SHiP::display::CachedGeometrySource::isValidCache(mainCachePath) &&
-                          SHiP::display::CachedGeometrySource::isValidCache(regionCachePath);
+    bool useCache = !geoCache.empty() &&
+                    SHiP::display::CachedGeometrySource::isValidCache(mainCachePath) &&
+                    SHiP::display::CachedGeometrySource::isValidCache(regionCachePath);
     if (!geoCache.empty() && !useCache) {
         std::cerr << "[sea_cucumber] geometry cache '" << geoCache
                   << ".{main,region}.root' missing or stale -- falling back to the .db "
                      "(run make_geometry_cache to build it)\n";
+    }
+    if (useCache) {
+        // A cache stores positions already multiplied by the scale it was
+        // written at; replaying it under a different --scale/--view would
+        // silently mis-scale the whole display, so treat that as stale. The
+        // two files carry their own scale and nothing forces them to come from
+        // the same make_geometry_cache run, so both have to agree.
+        for (const auto& path : {mainCachePath, regionCachePath}) {
+            const double cScale = SHiP::display::CachedGeometrySource::cachedScale(path);
+            if (!(std::abs(cScale - view.hit_scale) <= 1e-9 * view.hit_scale)) {
+                std::cerr << "[sea_cucumber] geometry cache '" << path << "' was written at scale "
+                          << cScale << " but the current view uses " << view.hit_scale
+                          << " -- falling back to the .db (rebuild with make_geometry_cache)\n";
+                useCache = false;
+                break;
+            }
+        }
     }
 
     try {
