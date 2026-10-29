@@ -47,10 +47,10 @@ max_transparency = 0
 
 [[region]]
 name = "SpectroOrtho"
-title = "DEBUG spectrometer XZ"
+title = "DEBUG spectrometer side"
 zmin = 83000.0
 zmax = 93000.0
-camera = "xz"
+camera = "side"
 max_shapes = 2000
 max_transparency = 0
 

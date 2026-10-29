@@ -19,6 +19,16 @@ const COL = {
   pinkLt: 0xeda9c8, // decay vertex
 };
 
+// Camera names from the view config, mapped onto the presets in Panel.frame().
+// Plane names are the plane on screen, in either order; the raw ROOT names
+// follow ROOT's ECameraType, whose kCameraOrthoZOY looks along x.
+const CAMERA_ALIASES = {
+  zy: "side", yz: "side", orthozoy: "side",
+  xz: "top", zx: "top", orthoxoz: "top",
+  xy: "front", yx: "front", orthoxoy: "front",
+  persp: "3d", perspxoz: "3d",
+};
+
 const $ = (id) => document.getElementById(id);
 const setStatus = (html) => { $("status").innerHTML = html || ""; };
 
@@ -141,8 +151,11 @@ class Panel {
     this.invalidate();
   }
 
-  // Frame the current geometry box from a named direction.
-  frame(view) {
+  // Frame the current geometry box from a named direction. Accepts the same
+  // camera names as the REve display (cameraFor in src/sea_cucumber.cxx), so a
+  // region's `camera` shows the same picture in both.
+  frame(name) {
+    const view = CAMERA_ALIASES[name] || name;
     const c = this.box.getCenter(new THREE.Vector3());
     const size = this.box.getSize(new THREE.Vector3());
     const r = Math.max(size.x, size.y, size.z, 1) * 0.5;

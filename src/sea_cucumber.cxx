@@ -76,18 +76,18 @@ Color_t hexColor(const std::string& s, Color_t fb = kGray) {
 
 // Camera orientation.
 //
-// ROOT's ECameraType names ("XOY", "XOZ", "ZOY") do NOT map onto the intuitive
-// "which plane am I looking at" reading -- kCameraOrthoXOY shows the detector
-// extended along the beam, i.e. it looks along x/y, not along z. So the config
-// uses INTENT names, with the raw enum names available as an escape hatch:
+// ROOT's ECameraType names give the plane on screen, horizontal axis first:
+// kCameraOrthoZOY has z across and y up, so it looks along x. The config
+// accepts intent names, or the plane on screen in either order, and the
+// web client (frame() in web/js/main.js) understands the same names:
 //
-//   "side"  / "xz"  -- detector seen lengthways        (kCameraOrthoXOZ)
-//   "top"   / "xy0" -- from above, also lengthways     (kCameraOrthoXOY)
-//   "front" / "xy"  -- facing the beam, cross-section  (kCameraOrthoZOY)
-//   "3d"    / "persp"                                  (kCameraPerspXOZ)
+//   "side"  / "zy" / "yz" -- looking along x, beam across  (kCameraOrthoZOY)
+//   "top"   / "xz" / "zx" -- looking along y, from above   (kCameraOrthoXOZ)
+//   "front" / "xy" / "yx" -- looking along z, beam's-eye   (kCameraOrthoXOY)
+//   "3d"    / "persp"                                      (kCameraPerspXOZ)
 //
-// Raw names ("orthoxoy", "orthoxoz", "orthozoy", "perspxoz") bypass all of
-// this if the intent names still don't land where you expect.
+// Raw names ("orthoxoy", "orthoxoz", "orthozoy", "perspxoz") pick the ROOT
+// enum directly.
 REX::REveViewer::ECameraType cameraFor(const std::string& c) {
     // --- raw enum names ------------------------------------------------------
     if (c == "orthoxoy") return REX::REveViewer::kCameraOrthoXOY;
@@ -95,20 +95,20 @@ REX::REveViewer::ECameraType cameraFor(const std::string& c) {
     if (c == "orthozoy") return REX::REveViewer::kCameraOrthoZOY;
     if (c == "perspxoz") return REX::REveViewer::kCameraPerspXOZ;
     // --- intent names --------------------------------------------------------
-    if (c == "front" || c == "xy" || c == "yx") return REX::REveViewer::kCameraOrthoZOY;
-    if (c == "top" || c == "xy0") return REX::REveViewer::kCameraOrthoXOY;
+    if (c == "front" || c == "xy" || c == "yx") return REX::REveViewer::kCameraOrthoXOY;
+    if (c == "top" || c == "xz" || c == "zx") return REX::REveViewer::kCameraOrthoXOZ;
     if (c == "3d" || c == "persp") return REX::REveViewer::kCameraPerspXOZ;
-    return REX::REveViewer::kCameraOrthoXOZ;  // "side" / "xz" (default)
+    return REX::REveViewer::kCameraOrthoZOY;  // "side" / "zy" / "yz" (default)
 }
 
 // Human-readable description of what a camera name resolves to, so the log can
 // be correlated with what actually appears on screen.
 const char* cameraDesc(const std::string& c) {
-    if (c == "orthoxoy" || c == "top" || c == "xy0") return "kCameraOrthoXOY (top)";
-    if (c == "orthozoy" || c == "front" || c == "xy" || c == "yx")
-        return "kCameraOrthoZOY (front, facing the beam)";
+    if (c == "orthoxoy" || c == "front" || c == "xy" || c == "yx")
+        return "kCameraOrthoXOY (front, facing the beam)";
+    if (c == "orthoxoz" || c == "top" || c == "xz" || c == "zx") return "kCameraOrthoXOZ (top)";
     if (c == "perspxoz" || c == "3d" || c == "persp") return "kCameraPerspXOZ (perspective)";
-    return "kCameraOrthoXOZ (side)";
+    return "kCameraOrthoZOY (side)";
 }
 
 }  // namespace
