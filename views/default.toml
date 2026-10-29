@@ -29,7 +29,7 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 # inside EVERY axis window that is set; unset axes are unconstrained.
 #
 # The window is INDEPENDENT of the camera: what you select and what you look
-# along are different choices. A side view ("xz") is normally a z slab; a front
+# along are different choices. A side view ("side") is normally a z slab; a front
 # view ("xy") normally an x or y slab. If they look inconsistent you get a
 # warning, never an error -- whatever windows you supplied are used, with z
 # preferred when present.
@@ -44,8 +44,8 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 #     to zoom out, shift the window to pan. The whole window is framed, so hits
 #     extending past the drawn geometry are no longer chopped. offset_x/y/z
 #     nudge the framing by hand (mm); recenter=false keeps global coordinates.
-#   camera: "xz" side view (looking along y) | "yz" along the beam (looking
-#     along x) | "xy" transverse, beam's-eye (looking along z) | "3d"
+#   camera: "side"/"zy" (looking along x) | "top"/"xz" (looking along y) |
+#     "front"/"xy" transverse, beam's-eye (looking along z) | "3d"
 #   hit_marker_size: marker size for hits in THIS view (omit to use [hits]).
 #     Zoom views usually want smaller markers, since the same hits cover much
 #     more screen area than in the full-detector view.
@@ -86,7 +86,7 @@ title = "Spectrometer (side view)"
 # geometry extent with:  --inspect 4  (read the station volumes' z spans).
 zmin = 82000.0
 zmax = 96000.0
-camera = "xz"
+camera = "side"
 # Higher budget so more than the first stations render (applied at display
 # time, so this needs no cache rebuild).
 max_shapes = 6000
@@ -112,7 +112,7 @@ title = "Calorimeter (side view)"
 # showed only its upstream third. Verify with:  --inspect 4
 zmin = 96000.0
 zmax = 100000.0
-camera = "xz"
+camera = "side"
 max_shapes = 6000
 max_transparency = 30
 panel_x = 1228
@@ -133,7 +133,7 @@ title = "Scattering and Neutrino Detector (side view)"
 # emitted to the web manifest). Neutrino detector spans ~26400-31500 mm.
 zmin = 26400.0
 zmax = 31500.0
-camera = "xz"
+camera = "side"
 max_shapes = 6000
 max_transparency = 30
 panel_x = 1228

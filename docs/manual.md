@@ -136,8 +136,10 @@ the camera:
 - `xmin`/`xmax`, `ymin`/`ymax`, `zmin`/`zmax` — any subset; a volume/hit is kept
   only if inside every axis window that is set.
 - `match` — derive a z window by volume name instead of hardcoding it.
-- `camera` — `"side"`/`"xz"` (looking along y), `"front"`/`"xy"` (along z,
-  beam's-eye), `"top"`/`"xy0"`, `"3d"`. Raw ROOT enum names also accepted.
+- `camera` — `"side"`/`"zy"` (looking along x), `"top"`/`"xz"` (along y),
+  `"front"`/`"xy"` (along z, beam's-eye), `"3d"`. The plane names work in either
+  order, and raw ROOT enum names are also accepted. The browser reads the same
+  names.
 - `exclude`/`include` — drop/restrict volumes in THIS view only.
 - `max_shapes`, `max_transparency`, `margin_frac`.
 - `recenter` (+ `offset_x/y/z`) — centre the region on its window so the camera

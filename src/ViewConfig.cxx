@@ -69,7 +69,7 @@ ViewConfig DefaultViewConfig() {
     spectro.has_window[2] = true;
     spectro.wmin[2] = 83000.0;
     spectro.wmax[2] = 93000.0;
-    spectro.camera = "xz";
+    spectro.camera = "side";
 
     RegionView calo;
     calo.name = "Calorimeter";
@@ -77,7 +77,7 @@ ViewConfig DefaultViewConfig() {
     calo.has_window[2] = true;
     calo.wmin[2] = 96000.0;
     calo.wmax[2] = 98000.0;
-    calo.camera = "xz";
+    calo.camera = "side";
 
     // No hardcoded z: derive the SND window from the geometry by name, so this
     // works on any geometry that labels its neutrino detector sensibly.
@@ -85,7 +85,7 @@ ViewConfig DefaultViewConfig() {
     snd.name = "SND";
     snd.title = "Scattering and Neutrino Detector (side view)";
     snd.match = "SND|Neutrino|Scattering|Emulsion";
-    snd.camera = "xz";
+    snd.camera = "side";
 
     c.regions = {spectro, calo, snd};
     return c;
@@ -250,7 +250,7 @@ ViewConfig LoadViewConfig(const std::string& path) {
             // Sanity-check the window against the camera. This is a warning,
             // never an error: we always use whatever windows were supplied,
             // preferring z when it is present.
-            const bool front = (v.camera == "xy" || v.camera == "yx");
+            const bool front = (v.camera == "front" || v.camera == "xy" || v.camera == "yx");
             if (front && !v.has_window[0] && !v.has_window[1]) {
                 if (v.has_window[2]) {
                     std::cerr << "[ViewConfig] region '" << v.name << "': camera \"" << v.camera
