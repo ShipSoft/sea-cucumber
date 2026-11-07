@@ -52,14 +52,14 @@ root_cxx_standard = "==23"
 shipdatamodel = ">=0.6.0"
 # Required transitively by SHiPDataModel's SHiP::SHiPUnits target.
 mp-units = ">=2.5"
-# GeoModel: GeoModelCore (Kernel) + GeoModelIO (DBManager, Read).
-geomodel = ">=6.22"
-# GeoModel is built against a specific Eigen ABI (Eigen3 5.x) and needs
-# nlohmann_json for its CMake config -- same host-deps the geometry repo
-# declares. Without eigen-abi-devel, find_package(GeoModelCore) falls back
-# to the system Eigen (3.x) and fails the 5.0.1 version check.
+# GeoModelCore (Kernel) and GeoModelIO (DBManager, Read) both ship in
+# geomodel-core. The geomodel metapackage would also pull in Geant4, Qt and
+# the visualization stack, none of which this display uses.
+geomodel-core = ">=6.22"
+# GeoModel is built against a specific Eigen ABI (Eigen3 5.x). Without
+# eigen-abi-devel, find_package(GeoModelCore) falls back to the system Eigen
+# (3.x) and fails the 5.0.1 version check.
 eigen-abi-devel = "*"
-nlohmann_json = "*"
 sqlite = "*"
 # View-config parser.
 tomlplusplus = "*"
