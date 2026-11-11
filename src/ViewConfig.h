@@ -74,7 +74,7 @@ struct RegionView {
     // A volume/hit is kept only if it falls inside EVERY axis window that is
     // set; unset axes are unconstrained. This is deliberately independent of
     // `camera`: what you SELECT and what you LOOK ALONG are different choices.
-    // A side view ("xz") is normally a z slab; a front view ("xy") is normally
+    // A side view ("side") is normally a z slab; a front view ("xy") is normally
     // an x or y slab, but any combination is legal.
     bool has_window[3] = {false, false, false};
     double wmin[3] = {0.0, 0.0, 0.0};
@@ -85,9 +85,9 @@ struct RegionView {
     // explicit window.
     std::string match;
 
-    // "xz" side view (looking along y) | "yz" along the beam (looking along x)
-    // | "xy" transverse/front view (looking along z) | "3d" perspective
-    std::string camera = "xz";
+    // "side"/"zy" (looking along x) | "top"/"xz" (looking along y)
+    // | "front"/"xy" transverse, beam's-eye (looking along z) | "3d" perspective
+    std::string camera = "side";
 
     // Web panel placement as VIEWPORT PERCENTAGES (0..100) for this region's
     // view, so a layout is resolution-independent. < 0 means "not set" -> the

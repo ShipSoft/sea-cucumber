@@ -29,6 +29,7 @@
   --earth-2: #241809;   /* deeper wells (panels, gaps) */
   --earth-3: #45301a;   /* raised surfaces */
   --yellow:  #e3a93c;   /* detector elements */
+  --blue:    #20428a;   /* accents (menu hover) */
   --pink:    #c64284;   /* hits (darker pink) */
   --pink-lt: #eda9c8;   /* decay vertex (lighter pink) */
   --cream:   #f1debc;   /* text / foreground */

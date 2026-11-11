@@ -191,9 +191,9 @@ int main(int argc, char* argv[]) {
     }
 
     auto model = ROOT::RNTupleModel::Create();
-    auto mcP = model->MakeField<std::vector<SHiP::MCParticle>>("mcParticles");
-    auto simH = model->MakeField<std::vector<SHiP::SimHit>>("simHits");
-    auto simR = model->MakeField<SHiP::SimResult>("simResult");
+    auto mcP = model->MakeField<std::vector<SHiP::MCParticle>>("mc_particles");
+    auto simH = model->MakeField<std::vector<SHiP::SimHit>>("sim_hits");
+    auto simR = model->MakeField<SHiP::SimResult>("sim_result");
     auto writer = ROOT::RNTupleWriter::Recreate(std::move(model), "events", output);
 
     for (int ev = 0; ev < nEvents; ++ev) {
