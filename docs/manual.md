@@ -60,7 +60,7 @@ sea_cucumber is a pixi workspace. All workflows go through pixi tasks:
 ### The REve display
 
 ```
-pixi run sc --geometry files/ship_geometry.db --data files/llp_display.root \
+pixi run run --geometry files/ship_geometry.db --data files/llp_display.root \
             --view views/default.toml --event 16
 ```
 
@@ -89,8 +89,8 @@ To find where subsystems sit in z (so you can set region windows), dump the
 geometry without any data file:
 
 ```
-pixi run sc --geometry files/ship_geometry.db --inspect 4
-pixi run sc --geometry files/ship_geometry.db --inspect 6 --inspect-match "*snd*"
+pixi run run --geometry files/ship_geometry.db --inspect 4
+pixi run run --geometry files/ship_geometry.db --inspect 6 --inspect-match "*snd*"
 ```
 
 `--inspect [depth]` prints each volume name aggregated with its count and z
@@ -220,7 +220,7 @@ once to a ROOT file the display loads quickly:
 
 ```
 pixi run geo-cache --geometry files/ship_geometry.db --view views/default.toml
-pixi run sc --geo-cache geocache --geometry files/ship_geometry.db \
+pixi run run --geo-cache geocache --geometry files/ship_geometry.db \
             --data files/llp_display.root --view views/default.toml
 ```
 
