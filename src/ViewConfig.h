@@ -167,8 +167,17 @@ struct ViewConfig {
     std::vector<std::string> region_exclude;
     bool has_region_exclude = false;
 
-    const std::string& colorForVolume(const std::string& name) const;
-    int transparencyForVolume(const std::string& name) const;
+    /// First style whose `match` occurs in `name`, or nullptr when no rule
+    /// matches. Callers use fallbackColorForVolume() and
+    /// geometry.default_transparency for unmatched volumes; returning the rule
+    /// itself (rather than a colour) is what lets them tell the two apart
+    /// without comparing colour strings.
+    const SubsystemStyle* styleForVolume(const std::string& name) const;
+
+    /// Deterministic colour for a volume no style rule matches: an FNV-1a hash
+    /// of the name picks from a curated, blue-dominant palette. The one shared
+    /// implementation keeps the REve and web displays in agreement.
+    std::string fallbackColorForVolume(const std::string& name) const;
 };
 
 ViewConfig LoadViewConfig(const std::string& path);

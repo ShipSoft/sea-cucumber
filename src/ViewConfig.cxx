@@ -91,18 +91,25 @@ ViewConfig DefaultViewConfig() {
     return c;
 }
 
-const std::string& ViewConfig::colorForVolume(const std::string& name) const {
+const SubsystemStyle* ViewConfig::styleForVolume(const std::string& name) const {
     for (const auto& s : geometry.styles) {
-        if (name.find(s.match) != std::string::npos) return s.color;
+        if (name.find(s.match) != std::string::npos) return &s;
     }
-    return geometry.default_color;
+    return nullptr;
 }
 
-int ViewConfig::transparencyForVolume(const std::string& name) const {
-    for (const auto& s : geometry.styles) {
-        if (name.find(s.match) != std::string::npos) return s.transparency;
+std::string ViewConfig::fallbackColorForVolume(const std::string& name) const {
+    // Curated palette: blue-dominant (six blues) with a cream and a muted
+    // purple worked in for variety, deliberately excluding the bright hit pink
+    // (#C64284) so hits stay clearly visible against the geometry.
+    static const char* kPalette[] = {"#0A1F44", "#12305F", "#20428A", "#3A6BBF",
+                                     "#6E97D6", "#A9C4E8", "#E8CFA0", "#7A6A9E"};
+    std::uint64_t h = 1469598103934665603ull;  // FNV-1a over the name
+    for (char c : name) {
+        h ^= static_cast<unsigned char>(c);
+        h *= 1099511628211ull;
     }
-    return geometry.default_transparency;
+    return kPalette[h % (sizeof(kPalette) / sizeof(kPalette[0]))];
 }
 
 ViewConfig LoadViewConfig(const std::string& path) {
@@ -172,7 +179,7 @@ ViewConfig LoadViewConfig(const std::string& path) {
                     SubsystemStyle s;
                     s.match = (*t)["match"].value_or(std::string{});
                     s.color = (*t)["color"].value_or(c.geometry.default_color);
-                    s.transparency = (*t)["transparency"].value_or(55);
+                    s.transparency = (*t)["transparency"].value_or(c.geometry.default_transparency);
                     if (!s.match.empty()) c.geometry.styles.push_back(s);
                 }
             }
