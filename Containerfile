@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
 FROM ghcr.io/prefix-dev/pixi:0.81.0 AS build
 
 WORKDIR /src
@@ -14,7 +17,7 @@ RUN pixi run build
 # TODO We need to get the geometry from somewhere, for now, it is included with
 # the copy above, but that means the image building would not work in CI (unless
 # the CI then downloads the geometry from somewhere). We can also download it
-# like the following if ther eis a publicly available artifact somewhere..
+# like the following if there is a publicly available artifact somewhere..
 #ADD https://github.com/ShipSoft/Geometry/actions/runs/34952846912/artifacts/10389951944 ./
 
 # NOTE! If we want to add a cron setup to do web-data production periodically
