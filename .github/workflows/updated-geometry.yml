@@ -3,12 +3,36 @@
 name: Update web data with new geometry artifact
 
 on:
+  # Sent by ShipSoft/Geometry's build-test workflow after each push to main.
   repository_dispatch:
     types: [geometry-artifact-ready]
+  # Manual runs, e.g. to test this workflow or rebuild from an older geometry.
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: ShipSoft/Geometry workflow run ID that uploaded the artifact
+        required: true
+        type: string
+      sha:
+        description: Geometry commit SHA the artifact was built from
+        required: true
+        type: string
 
 permissions:
   contents: read
-  actions: read
+  packages: write
+
+# A newer geometry supersedes an image build that is still running.
+concurrency:
+  group: updated-geometry
+  cancel-in-progress: true
+
+env:
+  RUN_ID: ${{ github.event.client_payload.run_id || inputs.run_id }}
+  GEOMETRY_SHA: ${{ github.event.client_payload.sha || inputs.sha }}
+  ARTIFACT_NAME: >-
+    ${{ github.event.client_payload.artifact_name ||
+        format('ship_geometry-{0}', inputs.sha) }}
 
 jobs:
   build:
@@ -17,19 +41,57 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ShipSoft
+          repositories: Geometry
+          # Downloading another repository's artifacts needs actions: read.
+          permission-actions: read
+
       - name: Download SHiP Geometry artifact
         uses: actions/download-artifact@v8
         with:
-          name: ${{ github.event.client_payload.artifact_name }}
-          path: ./ship_geometry.db
+          name: ${{ env.ARTIFACT_NAME }}
+          # A single-file artifact unpacks to its basename: ./ship_geometry.db
+          path: .
           repository: ShipSoft/Geometry
-          run-id: ${{ github.event.client_payload.run_id }}
-          github-token: ${{ secrets.GEOMETRY_ARTIFACT_READ_TOKEN }}
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ steps.app-token.outputs.token }}
 
-      # Restore or install the Pixi environment
-      - uses: prefix-dev/setup-pixi@v0.10.2
+      - name: Check the geometry arrived
+        run: test -f ship_geometry.db
+
+      - name: Compute image tags
+        id: tags
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          image="ghcr.io/${OWNER,,}/sea-cucumber"
+          {
+            echo "tags<<EOF"
+            echo "${image}:latest"
+            echo "${image}:geometry-${GEOMETRY_SHA::7}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v4
         with:
-          cache: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run sea-cucumber web-data generation
-        run: pixi run demo --geometry ./ship_geometry.db
+      - name: Build and push the event display image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Containerfile
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            ch.cern.ship.geometry.revision=${{ env.GEOMETRY_SHA }}
