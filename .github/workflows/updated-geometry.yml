@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+# SPDX-License-Identifier: LGPL-3.0-or-later
+name: Update web data with new geometry artifact
+
+on:
+  repository_dispatch:
+    types: [geometry-artifact-ready]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Geometry artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ github.event.client_payload.artifact_name }}
+          path: ./ship_geometry.db
+          repository: ShipSoft/Geometry
+          run-id: ${{ github.event.client_payload.run_id }}
+          github-token: ${{ secrets.GEOMETRY_ARTIFACT_READ_TOKEN }}
+
+      # TODO Add in the compiled artifacts from build-and-test?
+
+      - name: Run sea-cucumber web-data generation
+        run: pixi run demo --geometry ./ship_geometry.db
