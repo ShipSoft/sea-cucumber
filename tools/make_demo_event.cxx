@@ -5,14 +5,14 @@
 //  model, for showing off sea_cucumber without a full simulation.
 //
 //  What it writes (deliberately minimal -- no fabricated reconstruction):
-//    * simHits: hits in the DOWNSTREAM sub-detector section only (tracker /
+//    * sim_hits: hits in the DOWNSTREAM sub-detector section only (tracker /
 //      timing / calorimeter), placed on the real detector volumes found in the
 //      geometry. A neutral particle decays in the decay volume into two charged
 //      daughters whose (undrawn) trajectories seed the downstream hits, with a
 //      calorimeter shower cluster per daughter.
-//    * mcParticles: the mother and its two daughters, so the display can mark
+//    * mc_particles: the mother and its two daughters, so the display can mark
 //      the TRUTH decay vertex. No tracks/vertices are fabricated beyond this.
-//    * simResult: bundles the hits.
+//    * sim_result: bundles the hits.
 //
 //  GEOMETRY-AWARE: with --geometry <ship.db> it walks the real geometry
 //  (reusing GeoModelLoader) so hits land on the detectors you load. The
@@ -191,9 +191,9 @@ int main(int argc, char* argv[]) {
     }
 
     auto model = ROOT::RNTupleModel::Create();
-    auto mcP = model->MakeField<std::vector<SHiP::MCParticle>>("mcParticles");
-    auto simH = model->MakeField<std::vector<SHiP::SimHit>>("simHits");
-    auto simR = model->MakeField<SHiP::SimResult>("simResult");
+    auto mcP = model->MakeField<std::vector<SHiP::MCParticle>>("mc_particles");
+    auto simH = model->MakeField<std::vector<SHiP::SimHit>>("sim_hits");
+    auto simR = model->MakeField<SHiP::SimResult>("sim_result");
     auto writer = ROOT::RNTupleWriter::Recreate(std::move(model), "events", output);
 
     for (int ev = 0; ev < nEvents; ++ev) {
