@@ -32,7 +32,8 @@ env:
   GEOMETRY_SHA: ${{ github.event.client_payload.sha || inputs.sha }}
   ARTIFACT_NAME: >-
     ${{ github.event.client_payload.artifact_name ||
-        format('ship_geometry-{0}', inputs.sha) }}
+        format('ship_geometry-{0}',
+          github.event.client_payload.sha || inputs.sha) }}
 
 jobs:
   build:
