@@ -65,6 +65,24 @@ jobs:
       - name: Check the geometry arrived
         run: test -f ship_geometry.db
 
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          cache: true
+
+      - name: Generate demo events
+        run: pixi run demo-event --geometry ship_geometry.db
+
+      - name: Generate web display data
+        run: |
+          test -s demo_events.root
+
+          pixi run web-data \
+            --geometry ship_geometry.db \
+            --data demo_events.root \
+            --view views/default.toml
+
+          test -s web/data/manifest.json
+
       - name: Compute image tags
         id: tags
         env:
