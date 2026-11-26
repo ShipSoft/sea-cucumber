@@ -81,6 +81,13 @@ cmakelint = "*"
 reuse = "*"
 cffconvert = "*"
 commitizen = "*"
+# Web frontend: prettier formats, eslint/stylelint check. Both eslint and
+# stylelint are noarch npm packages and pull nodejs in transitively.
+prettier = "3.*"
+eslint = "10.*"
+stylelint = "17.*"
+# tools/dump_hit_z.py
+ruff = "0.16.*"
 
 [feature.lint.pypi-dependencies]
 cpplint = "==2.0.2"

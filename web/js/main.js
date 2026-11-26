@@ -20,7 +20,9 @@ const COL = {
 };
 
 const $ = (id) => document.getElementById(id);
-const setStatus = (html) => { $("status").innerHTML = html || ""; };
+const setStatus = (html) => {
+  $("status").innerHTML = html || "";
+};
 
 // A single 3D panel: canvas + renderer + scene + camera + toggle groups.
 class Panel {
@@ -110,17 +112,38 @@ class Panel {
       }
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      this.gHits.add(new THREE.Points(g, new THREE.PointsMaterial(
-        { color: COL.pink, size: this.opts.hitSize, sizeAttenuation: false })));
+      this.gHits.add(
+        new THREE.Points(
+          g,
+          new THREE.PointsMaterial({
+            color: COL.pink,
+            size: this.opts.hitSize,
+            sizeAttenuation: false,
+          }),
+        ),
+      );
     }
 
     if (ev.vertex && (!win || hitInWindow(ev.vertex, win))) {
       const v = ev.vertex;
       const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(
-        [v.x * scale - this.offset.x, v.y * scale - this.offset.y, v.z * scale - this.offset.z]), 3));
-      this.gVertex.add(new THREE.Points(g, new THREE.PointsMaterial(
-        { color: COL.pinkLt, size: 11, sizeAttenuation: false })));
+      g.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+          new Float32Array([
+            v.x * scale - this.offset.x,
+            v.y * scale - this.offset.y,
+            v.z * scale - this.offset.z,
+          ]),
+          3,
+        ),
+      );
+      this.gVertex.add(
+        new THREE.Points(
+          g,
+          new THREE.PointsMaterial({ color: COL.pinkLt, size: 11, sizeAttenuation: false }),
+        ),
+      );
     }
     this.invalidate();
   }
@@ -137,7 +160,9 @@ class Panel {
   // Update hit marker size live, without rebuilding the event.
   setHitSize(px) {
     this.opts.hitSize = px;
-    for (const pts of this.gHits.children) { pts.material.size = px; }
+    for (const pts of this.gHits.children) {
+      pts.material.size = px;
+    }
     this.invalidate();
   }
 
@@ -147,12 +172,14 @@ class Panel {
     const size = this.box.getSize(new THREE.Vector3());
     const r = Math.max(size.x, size.y, size.z, 1) * 0.5;
     const d = r * 2.4;
-    const dir = ({
-      "3d": new THREE.Vector3(1, 0.7, 1),
-      side: new THREE.Vector3(0, 1, 0.0001),   // look along y (xz plane)
-      front: new THREE.Vector3(0.0001, 0, 1),  // look along z (xy, beam's-eye)
-      top: new THREE.Vector3(0, 1, 0.0001),
-    }[view] || new THREE.Vector3(1, 0.7, 1)).normalize();
+    const dir = (
+      {
+        "3d": new THREE.Vector3(1, 0.7, 1),
+        side: new THREE.Vector3(0, 1, 0.0001), // look along y (xz plane)
+        front: new THREE.Vector3(0.0001, 0, 1), // look along z (xy, beam's-eye)
+        top: new THREE.Vector3(0, 1, 0.0001),
+      }[view] || new THREE.Vector3(1, 0.7, 1)
+    ).normalize();
     this.camera.position.copy(c).addScaledVector(dir, d);
     this.camera.up.set(0, view === "top" ? 0 : 1, view === "top" ? -1 : 0);
     this.camera.near = Math.max(d / 1000, 0.01);
@@ -163,10 +190,13 @@ class Panel {
     this.invalidate();
   }
 
-  invalidate() { this._needsRender = true; }
+  invalidate() {
+    this._needsRender = true;
+  }
 
   resize() {
-    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    const w = this.canvas.clientWidth,
+      h = this.canvas.clientHeight;
     // Compare against the CSS size we last applied, NOT canvas.width: with
     // setPixelRatio(pr) the backing store is pr*w, so `canvas.width !== w` is
     // always true and would resize+render every frame, pegging the CPU/GPU.
@@ -223,7 +253,9 @@ class Panel {
 
 // --- window helpers (mm) ---------------------------------------------------
 // win is [ [lo,hi]|null, [lo,hi]|null, [lo,hi]|null ] for x,y,z.
-function inWin1(v, w) { return !w || (v >= w[0] && v <= w[1]); }
+function inWin1(v, w) {
+  return !w || (v >= w[0] && v <= w[1]);
+}
 function hitInWindow(h, win) {
   return inWin1(h.x, win[0]) && inWin1(h.y, win[1]) && inWin1(h.z, win[2]);
 }
@@ -233,21 +265,31 @@ function hitInWindow(h, win) {
 // centroid sits at the vessel centre, from being pulled in whole when you box a
 // small region there -- the same "oversized" rejection the REve path uses.
 function meshInWindow(m, win) {
-  let cx = 0, cy = 0, cz = 0;
-  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  let cx = 0,
+    cy = 0,
+    cz = 0;
+  const lo = [Infinity, Infinity, Infinity],
+    hi = [-Infinity, -Infinity, -Infinity];
   const n = m.vertices.length / 3;
   for (let i = 0; i < m.vertices.length; i += 3) {
-    const x = m.vertices[i], y = m.vertices[i + 1], z = m.vertices[i + 2];
-    cx += x; cy += y; cz += z;
-    if (x < lo[0]) lo[0] = x; if (x > hi[0]) hi[0] = x;
-    if (y < lo[1]) lo[1] = y; if (y > hi[1]) hi[1] = y;
-    if (z < lo[2]) lo[2] = z; if (z > hi[2]) hi[2] = z;
+    const x = m.vertices[i],
+      y = m.vertices[i + 1],
+      z = m.vertices[i + 2];
+    cx += x;
+    cy += y;
+    cz += z;
+    if (x < lo[0]) lo[0] = x;
+    if (x > hi[0]) hi[0] = x;
+    if (y < lo[1]) lo[1] = y;
+    if (y > hi[1]) hi[1] = y;
+    if (z < lo[2]) lo[2] = z;
+    if (z > hi[2]) hi[2] = z;
   }
   const c = [cx / n, cy / n, cz / n];
   for (let a = 0; a < 3; a++) {
     const w = win[a];
-    if (!w) continue;                              // axis unconstrained
-    if (c[a] < w[0] || c[a] > w[1]) return false;  // centroid outside
+    if (!w) continue; // axis unconstrained
+    if (c[a] < w[0] || c[a] > w[1]) return false; // centroid outside
     const winLen = w[1] - w[0];
     const meshLen = hi[a] - lo[a];
     // Reject volumes much larger than the window on a constrained axis.
@@ -271,7 +313,10 @@ function subsystemHash(name) {
   if (parts.length >= 2) key = parts[0].toLowerCase() === "ship" ? parts[1] : parts[0];
   else if (parts.length === 1) key = parts[0];
   let h = 2166136261;
-  for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
   return h;
 }
 
@@ -286,7 +331,8 @@ function computeGeometry(meshes, scale, win) {
   if (!win && _fullGeomCache.value) return _fullGeomCache.value;
 
   const offset = [0, 0, 0];
-  if (win) for (const ax of [0, 1, 2]) if (win[ax]) offset[ax] = 0.5 * (win[ax][0] + win[ax][1]) * scale;
+  if (win)
+    for (const ax of [0, 1, 2]) if (win[ax]) offset[ax] = 0.5 * (win[ax][0] + win[ax][1]) * scale;
 
   const buckets = new Map();
   const box = new THREE.Box3();
@@ -306,16 +352,22 @@ function computeGeometry(meshes, scale, win) {
     }
     const key = color + "|" + t;
     let bk = buckets.get(key);
-    if (!bk) { bk = { color, transparency: t, pos: [], idx: [] }; buckets.set(key, bk); }
+    if (!bk) {
+      bk = { color, transparency: t, pos: [], idx: [] };
+      buckets.set(key, bk);
+    }
     const base = bk.pos.length / 3;
     for (let i = 0; i < m.vertices.length; i += 3) {
       const x = m.vertices[i] * scale - offset[0];
       const y = m.vertices[i + 1] * scale - offset[1];
       const z = m.vertices[i + 2] * scale - offset[2];
       bk.pos.push(x, y, z);
-      if (x < box.min.x) box.min.x = x; if (x > box.max.x) box.max.x = x;
-      if (y < box.min.y) box.min.y = y; if (y > box.max.y) box.max.y = y;
-      if (z < box.min.z) box.min.z = z; if (z > box.max.z) box.max.z = z;
+      if (x < box.min.x) box.min.x = x;
+      if (x > box.max.x) box.max.x = x;
+      if (y < box.min.y) box.min.y = y;
+      if (y > box.max.y) box.max.y = y;
+      if (z < box.min.z) box.min.z = z;
+      if (z > box.max.z) box.max.z = z;
     }
     for (let i = 0; i < m.indices.length; i++) bk.idx.push(m.indices[i] + base);
   }
@@ -325,7 +377,8 @@ function computeGeometry(meshes, scale, win) {
   for (const bk of buckets.values()) {
     if (!bk.pos.length) continue;
     const positions = new Float32Array(bk.pos);
-    const indices = positions.length / 3 > 65535 ? new Uint32Array(bk.idx) : new Uint16Array(bk.idx);
+    const indices =
+      positions.length / 3 > 65535 ? new Uint32Array(bk.idx) : new Uint16Array(bk.idx);
     const tmp = new THREE.BufferGeometry();
     tmp.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     tmp.setIndex(new THREE.BufferAttribute(indices, 1));
@@ -351,7 +404,6 @@ const data = new DataSource(new URLSearchParams(location.search).get("data") || 
 let scale = 1 / 1000;
 let current = 0;
 let meshes = [];
-let hitSize = 4;   // hit marker size (px), set from the sidebar
 
 const main = new Panel("view-main");
 
@@ -373,8 +425,12 @@ async function gotoEvent(i) {
   $("evNum").textContent = String(ev.event ?? current);
   $("nHits").textContent = String((ev.hits || []).length);
   if (ev.hits && ev.hits.length) {
-    let lo = Infinity, hi = -Infinity;
-    for (const h of ev.hits) { if (h.z < lo) lo = h.z; if (h.z > hi) hi = h.z; }
+    let lo = Infinity,
+      hi = -Infinity;
+    for (const h of ev.hits) {
+      if (h.z < lo) lo = h.z;
+      if (h.z > hi) hi = h.z;
+    }
     $("zRange").textContent = `${lo.toFixed(0)}…${hi.toFixed(0)}`;
   } else {
     $("zRange").textContent = "–";
@@ -385,13 +441,18 @@ async function gotoEvent(i) {
 $("prev").addEventListener("click", () => gotoEvent(current - 1));
 $("next").addEventListener("click", () => gotoEvent(current + 1));
 // --- colour schemes --------------------------------------------------------
-let schemeGeometry = null;   // active detector palette (array of hex), or null
-function hexToInt(hex) { return parseInt(hex.replace("#", ""), 16) || 0; }
+let schemeGeometry = null; // active detector palette (array of hex), or null
+function hexToInt(hex) {
+  return parseInt(hex.replace("#", ""), 16) || 0;
+}
 function hexRGB(hex) {
   const n = hexToInt(hex);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-function rgbaOf(hex, a) { const [r, g, b] = hexRGB(hex); return `rgba(${r},${g},${b},${a})`; }
+function rgbaOf(hex, a) {
+  const [r, g, b] = hexRGB(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
 
 // Apply a named scheme live: CSS variables (chrome), the 3D clear colour of
 // every panel, the hit/vertex marker colours, and the detector palette. Then
@@ -413,7 +474,6 @@ function applyScheme(name, opts = {}) {
   COL.pink = hexToInt(s.hit);
   COL.pinkLt = hexToInt(s.vertex);
   schemeGeometry = s.geometry || null;
-  activeScheme = name;
   const sel = $("scheme");
   if (sel && sel.value !== name) sel.value = name;
 
@@ -421,15 +481,16 @@ function applyScheme(name, opts = {}) {
   // the rebuild to avoid doing it twice.
   if (opts.rebuild === false) return;
 
-  _fullGeomCache.value = null;                 // palette changed -> invalidate
+  _fullGeomCache.value = null; // palette changed -> invalidate
   const setClear = (p) => p.renderer.setClearColor(COL.earth, 1);
   setClear(main);
   main.setGeometry(computeGeometry(meshes, scale, null));
-  floats.forEach((f) => { setClear(f.panel); f.panel.setGeometry(computeGeometry(meshes, scale, f.win)); });
+  floats.forEach((f) => {
+    setClear(f.panel);
+    f.panel.setGeometry(computeGeometry(meshes, scale, f.win));
+  });
   if (typeof current === "number" && data.nEvents > 0) gotoEvent(current);
 }
-let activeScheme = DEFAULT_SCHEME;
-
 
 // Global multiplier on every category (set from [ui] font_scale / +/-).
 let fontScale = 1;
@@ -442,10 +503,16 @@ function setFontScale(s) {
 // Text categories: each maps a set of elements to a CSS size variable, so one
 // value resizes the whole category. Keys match [ui.fonts] in the view TOML.
 const FONT_CATEGORIES = [
-  { key: "window_title", label: "window titles",
-    sel: ".panel__label,.fpanel__title,.fpanel__rename" },
-  { key: "menu", label: "menu text",
-    sel: ".brand__ver,.counter,.readout dt,.readout dd,.toggle,.side__foot,.slider,.btn,.hint" },
+  {
+    key: "window_title",
+    label: "window titles",
+    sel: ".panel__label,.fpanel__title,.fpanel__rename",
+  },
+  {
+    key: "menu",
+    label: "menu text",
+    sel: ".brand__ver,.counter,.readout dt,.readout dd,.toggle,.side__foot,.slider,.btn,.hint",
+  },
   { key: "heading", label: "headings", sel: ".ctl__h,.popout__title,.help h3" },
   { key: "dialog", label: "dialogs & menus", sel: ".ctxmenu__item,.field,.help table,.help p" },
   { key: "brand", label: "logo text", sel: ".brand__name" },
@@ -474,7 +541,9 @@ function rgbToHex(rgb) {
 // Set the text colour of every element in a category (live). New elements added
 // later won't inherit it -- colour tweaks are a live, throwaway convenience.
 function setCategoryColor(cat, hex) {
-  document.querySelectorAll(cat.sel).forEach((e) => { e.style.color = hex; });
+  document.querySelectorAll(cat.sel).forEach((e) => {
+    e.style.color = hex;
+  });
 }
 
 // Right-click a text label -> set its font size AND colour, for this element
@@ -506,24 +575,32 @@ function showTextDialog(el) {
 
     // size
     body.querySelector("#tdSizeSet").addEventListener("click", () => {
-      el.style.fontSize = Math.max(6, Number(body.querySelector("#tdSize").value) || curSize) + "px";
+      el.style.fontSize =
+        Math.max(6, Number(body.querySelector("#tdSize").value) || curSize) + "px";
       fitPanels();
     });
-    if (cat) body.querySelector("#tdCatSizeSet").addEventListener("click", () => {
-      setCategorySize(cat.key, Math.max(6, Number(body.querySelector("#tdCatSize").value) || categorySize(cat.key)));
-    });
+    if (cat)
+      body.querySelector("#tdCatSizeSet").addEventListener("click", () => {
+        setCategorySize(
+          cat.key,
+          Math.max(6, Number(body.querySelector("#tdCatSize").value) || categorySize(cat.key)),
+        );
+      });
     // colour: keep the picker and the hex field in sync
     const pick = body.querySelector("#tdPick");
     const col = body.querySelector("#tdCol");
-    pick.addEventListener("input", () => { col.value = pick.value; });
+    pick.addEventListener("input", () => {
+      col.value = pick.value;
+    });
     body.querySelector("#tdColSet").addEventListener("click", () => {
       const v = col.value.trim() || curHex;
       el.style.color = v;
     });
-    if (cat) body.querySelector("#tdCatColSet").addEventListener("click", () => {
-      const v = body.querySelector("#tdCatCol").value.trim() || curHex;
-      setCategoryColor(cat, v);
-    });
+    if (cat)
+      body.querySelector("#tdCatColSet").addEventListener("click", () => {
+        const v = body.querySelector("#tdCatCol").value.trim() || curHex;
+        setCategoryColor(cat, v);
+      });
     body.querySelector("#tdDone").addEventListener("click", close);
   });
 }
@@ -548,20 +625,61 @@ window.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || typing(e)) return;
   const t = () => (selectedView ? selectedView.panel : main);
   switch (e.key) {
-    case "ArrowLeft":  gotoEvent(current - 1); break;
-    case "ArrowRight": gotoEvent(current + 1); break;
-    case "n": createFloatingView(); break;
-    case "3": t().frame("3d"); break;
-    case "s": t().frame("side"); break;
-    case "f": t().frame("front"); break;
-    case "t": t().frame("top"); break;
-    case "g": { const p = targetPanel(); p.opts.geo = !p.opts.geo; p.applyOpts(); syncControls(p); break; }
-    case "h": { const p = targetPanel(); p.opts.hits = !p.opts.hits; p.applyOpts(); syncControls(p); break; }
-    case "v": { const p = targetPanel(); p.opts.vertex = !p.opts.vertex; p.applyOpts(); syncControls(p); break; }
-    case "+": case "=": setFontScale(fontScale + 0.1); break;
-    case "-": case "_": setFontScale(fontScale - 0.1); break;
-    case "?": toggleHelp(); break;
-    default: return;
+    case "ArrowLeft":
+      gotoEvent(current - 1);
+      break;
+    case "ArrowRight":
+      gotoEvent(current + 1);
+      break;
+    case "n":
+      createFloatingView();
+      break;
+    case "3":
+      t().frame("3d");
+      break;
+    case "s":
+      t().frame("side");
+      break;
+    case "f":
+      t().frame("front");
+      break;
+    case "t":
+      t().frame("top");
+      break;
+    case "g": {
+      const p = targetPanel();
+      p.opts.geo = !p.opts.geo;
+      p.applyOpts();
+      syncControls(p);
+      break;
+    }
+    case "h": {
+      const p = targetPanel();
+      p.opts.hits = !p.opts.hits;
+      p.applyOpts();
+      syncControls(p);
+      break;
+    }
+    case "v": {
+      const p = targetPanel();
+      p.opts.vertex = !p.opts.vertex;
+      p.applyOpts();
+      syncControls(p);
+      break;
+    }
+    case "+":
+    case "=":
+      setFontScale(fontScale + 0.1);
+      break;
+    case "-":
+    case "_":
+      setFontScale(fontScale - 0.1);
+      break;
+    case "?":
+      toggleHelp();
+      break;
+    default:
+      return;
   }
   e.preventDefault();
 });
@@ -572,18 +690,25 @@ window.addEventListener("keydown", (e) => {
 const TEXT_SELECTOR =
   ".ctl__h, .toggle, .counter, .readout dt, .readout dd, .brand__name, .brand__ver, " +
   ".panel__label, .fpanel__title, .slider, .side__foot, .btn";
-document.addEventListener("contextmenu", (e) => {
-  const el = e.target.closest(TEXT_SELECTOR);
-  if (!el) return;
-  e.preventDefault();
-  e.stopPropagation();
-  showTextDialog(el);
-}, true);
+document.addEventListener(
+  "contextmenu",
+  (e) => {
+    const el = e.target.closest(TEXT_SELECTOR);
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    showTextDialog(el);
+  },
+  true,
+);
 
 // Keyboard-shortcut help overlay, toggled with "?".
 function toggleHelp() {
   const existing = $("help");
-  if (existing) { existing.remove(); return; }
+  if (existing) {
+    existing.remove();
+    return;
+  }
   const box = document.createElement("div");
   box.id = "help";
   box.className = "help";
@@ -605,7 +730,9 @@ for (const b of document.querySelectorAll("[data-cam]")) {
     // Reorient the selected view if there is one, otherwise the main view.
     const target = selectedView ? selectedView.panel : main;
     target.frame(b.dataset.cam);
-    document.querySelectorAll("[data-cam]").forEach((o) => o.classList.toggle("is-active", o === b));
+    document
+      .querySelectorAll("[data-cam]")
+      .forEach((o) => o.classList.toggle("is-active", o === b));
   });
 }
 // toggle wiring is set up below, after the selection helpers are defined.
@@ -615,7 +742,9 @@ for (const b of document.querySelectorAll("[data-cam]")) {
 let selectedView = null; // a floats[] entry, or null (=> operate on main)
 
 // The panel the sidebar controls act on: the selected view, else the main view.
-function targetPanel() { return selectedView ? selectedView.panel : main; }
+function targetPanel() {
+  return selectedView ? selectedView.panel : main;
+}
 
 // Reflect a panel's options in the sidebar controls.
 function syncControls(panel) {
@@ -632,7 +761,10 @@ function selectView(entry) {
   syncControls(entry ? entry.panel : main);
 }
 function clearSelectionIfGone() {
-  if (selectedView && !floats.includes(selectedView)) { selectedView = null; syncControls(main); }
+  if (selectedView && !floats.includes(selectedView)) {
+    selectedView = null;
+    syncControls(main);
+  }
 }
 
 // Show/hide toggles act on the current target panel and are stored per-panel.
@@ -650,9 +782,9 @@ wireToggle("tVertex", "vertex");
 // --- floating user-created views (stage 1: create / move / resize / rename /
 //     close). Each is a full-detector view for now; restricting it to a drawn
 //     region comes in a later stage. ------------------------------------------
-const floats = [];       // { panel, el, name } for each floating view
-let floatSeq = 0;        // names view_0, view_1, ...
-let lastEvent = null;    // remember the current event to seed new panels
+const floats = []; // { panel, el, name } for each floating view
+let floatSeq = 0; // names view_0, view_1, ...
+let lastEvent = null; // remember the current event to seed new panels
 
 function bringToFront(el) {
   let z = 10;
@@ -670,7 +802,7 @@ function createFloatingView(opts = {}) {
   const layer = $("float-layer");
   const el = document.createElement("section");
   el.className = "fpanel";
-  const off = 4 + (floats.length % 6) * 3;  // % cascade so they don't overlap exactly
+  const off = 4 + (floats.length % 6) * 3; // % cascade so they don't overlap exactly
   el.style.left = off + "%";
   el.style.top = off + "%";
   el.style.width = "28%";
@@ -694,15 +826,15 @@ function createFloatingView(opts = {}) {
   layer.appendChild(el);
 
   const panel = new Panel(canvas);
-  panel.opts = { ...source.opts };                          // inherit options
-  panel.setGeometry(computeGeometry(meshes, scale, win));   // full detector, or a window
+  panel.opts = { ...source.opts }; // inherit options
+  panel.setGeometry(computeGeometry(meshes, scale, win)); // full detector, or a window
   panel.frame("3d");
   if (lastEvent) panel.setEvent(lastEvent, scale, win);
-  panel.applyOpts();                                        // apply inherited visibility/size
+  panel.applyOpts(); // apply inherited visibility/size
   const entry = { panel, el, name, win, locked: false, borderColor: null };
   floats.push(entry);
-  attachPick(panel);           // allow drawing a sub-region on this view
-  selectView(entry);           // newly created view becomes the selected one
+  attachPick(panel); // allow drawing a sub-region on this view
+  selectView(entry); // newly created view becomes the selected one
 
   // Selecting: pressing the bar (not the close button / rename field) selects
   // this view so the camera buttons and "Select view location" target it.
@@ -712,7 +844,10 @@ function createFloatingView(opts = {}) {
   bar.addEventListener("pointerdown", (e) => {
     if (entry.locked || e.target === close || e.target.tagName === "INPUT") return;
     bringToFront(el);
-    const sx = e.clientX, sy = e.clientY, ox = el.offsetLeft, oy = el.offsetTop;
+    const sx = e.clientX,
+      sy = e.clientY,
+      ox = el.offsetLeft,
+      oy = el.offsetTop;
     const move = (ev) => {
       el.style.left = Math.max(0, ox + (ev.clientX - sx)) + "px";
       el.style.top = Math.max(0, oy + (ev.clientY - sy)) + "px";
@@ -733,7 +868,9 @@ function createFloatingView(opts = {}) {
     title.replaceWith(input);
     input.focus();
     input.select();
-    input.addEventListener("keydown", (ev) => { if (ev.key === "Enter") input.blur(); });
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") input.blur();
+    });
     input.addEventListener("blur", () => {
       entry.name = input.value.trim() || entry.name;
       title.textContent = entry.name;
@@ -798,7 +935,10 @@ function showMenu(x, y, items) {
     const b = document.createElement("button");
     b.className = "ctxmenu__item";
     b.textContent = it.label;
-    b.addEventListener("click", () => { closeMenu(); it.onClick(); });
+    b.addEventListener("click", () => {
+      closeMenu();
+      it.onClick();
+    });
     menu.appendChild(b);
   }
   document.body.appendChild(menu);
@@ -824,7 +964,9 @@ function closeMenu() {
   window.removeEventListener("pointerdown", outsideClose, true);
   window.removeEventListener("keydown", escClose);
 }
-function escClose(e) { if (e.key === "Escape") closeMenu(); }
+function escClose(e) {
+  if (e.key === "Escape") closeMenu();
+}
 
 // A small centred popout dialog. `build(body, close)` fills the body; call
 // close() to dismiss. Returns nothing.
@@ -841,9 +983,14 @@ function showPopout(title, build) {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
-  overlay.addEventListener("pointerdown", (e) => { if (e.target === overlay) close(); });
+  overlay.addEventListener("pointerdown", (e) => {
+    if (e.target === overlay) close();
+  });
   window.addEventListener("keydown", function esc(e) {
-    if (e.key === "Escape") { close(); window.removeEventListener("keydown", esc); }
+    if (e.key === "Escape") {
+      close();
+      window.removeEventListener("keydown", esc);
+    }
   });
   build(body, close);
 }
@@ -876,9 +1023,10 @@ function rectOf(el) {
 function stackWindow(entry, dir) {
   const me = rectOf(entry.el);
   const others = floats.filter((f) => f !== entry).map((f) => rectOf(f.el));
-  const W = window.innerWidth, H = window.innerHeight;
-  const vOverlap = (o) => me.t < o.t + o.h && o.t < me.t + me.h;   // share y-range
-  const hOverlap = (o) => me.l < o.l + o.w && o.l < me.l + me.w;   // share x-range
+  const W = window.innerWidth,
+    H = window.innerHeight;
+  const vOverlap = (o) => me.t < o.t + o.h && o.t < me.t + me.h; // share y-range
+  const hOverlap = (o) => me.l < o.l + o.w && o.l < me.l + me.w; // share x-range
 
   if (dir === "left") {
     let x = 0;
@@ -922,14 +1070,25 @@ function showColourDialog(entry) {
       `<button id="cok" class="btn">Done</button></div>`;
     const pick = body.querySelector("#cpick");
     const hex = body.querySelector("#chex");
-    const apply = (v) => { entry.borderColor = v; applyBorder(entry); };
-    pick.addEventListener("input", () => { hex.value = pick.value; apply(pick.value); });
+    const apply = (v) => {
+      entry.borderColor = v;
+      applyBorder(entry);
+    };
+    pick.addEventListener("input", () => {
+      hex.value = pick.value;
+      apply(pick.value);
+    });
     hex.addEventListener("input", () => {
       const v = hex.value.trim();
-      if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) { pick.value = toHex6(v); apply(v); }
+      if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) {
+        pick.value = toHex6(v);
+        apply(v);
+      }
     });
     body.querySelector("#cdefault").addEventListener("click", () => {
-      entry.borderColor = null; applyBorder(entry); close();
+      entry.borderColor = null;
+      applyBorder(entry);
+      close();
     });
     body.querySelector("#cok").addEventListener("click", close);
   });
@@ -937,7 +1096,14 @@ function showColourDialog(entry) {
 // Normalise #rgb / #rrggbb to #rrggbb for the native colour input.
 function toHex6(v) {
   const m = /^#([0-9a-fA-F]{3})$/.exec(v);
-  if (m) return "#" + m[1].split("").map((c) => c + c).join("");
+  if (m)
+    return (
+      "#" +
+      m[1]
+        .split("")
+        .map((c) => c + c)
+        .join("")
+    );
   return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#e3a93c";
 }
 
@@ -1026,15 +1192,24 @@ async function saveSetup() {
 }
 
 function loadSetup(setup) {
-  if (!setup || !Array.isArray(setup.views)) { setStatus("Not a valid setup file."); return; }
+  if (!setup || !Array.isArray(setup.views)) {
+    setStatus("Not a valid setup file.");
+    return;
+  }
   // Clear existing floating views.
-  for (const f of [...floats]) { f.panel.dispose(); f.el.remove(); }
+  for (const f of [...floats]) {
+    f.panel.dispose();
+    f.el.remove();
+  }
   floats.length = 0;
   selectedView = null;
 
   // Main view (layout only -- never the event).
   if (setup.main) {
-    if (setup.main.opts) { main.opts = { ...main.opts, ...setup.main.opts }; main.applyOpts(); }
+    if (setup.main.opts) {
+      main.opts = { ...main.opts, ...setup.main.opts };
+      main.applyOpts();
+    }
     applyCamera(main, setup.main.camera);
   }
 
@@ -1054,13 +1229,19 @@ function loadSetup(setup) {
       if (v.rect.width) entry.el.style.width = v.rect.width;
       if (v.rect.height) entry.el.style.height = v.rect.height;
     }
-    if (v.opts) { entry.panel.opts = { ...entry.panel.opts, ...v.opts }; entry.panel.applyOpts(); }
+    if (v.opts) {
+      entry.panel.opts = { ...entry.panel.opts, ...v.opts };
+      entry.panel.applyOpts();
+    }
     applyCamera(entry.panel, v.camera);
-    if (v.borderColor) { entry.borderColor = v.borderColor; applyBorder(entry); }
+    if (v.borderColor) {
+      entry.borderColor = v.borderColor;
+      applyBorder(entry);
+    }
     if (v.locked) setLocked(entry, true);
   }
 
-  selectView(null);   // deselect; sidebar targets main
+  selectView(null); // deselect; sidebar targets main
   setStatus("");
 }
 
@@ -1079,7 +1260,7 @@ if (loadBtn && loadFile) {
     } catch (err) {
       setStatus(`Could not load setup:<br /><code>${err.message}</code>`);
     }
-    loadFile.value = "";  // allow re-loading the same file
+    loadFile.value = ""; // allow re-loading the same file
   });
 }
 
@@ -1118,15 +1299,21 @@ if (pickBtn) pickBtn.addEventListener("click", () => setPickMode(!pickMode));
 function rectToWindow(panel, x0, y0, x1, y1) {
   const rect = panel.canvas.getBoundingClientRect();
   const cam = panel.camera;
-  const ndc = (px, py) => new THREE.Vector2(
-    ((px - rect.left) / rect.width) * 2 - 1,
-    -(((py - rect.top) / rect.height) * 2 - 1)
-  );
+  const ndc = (px, py) =>
+    new THREE.Vector2(
+      ((px - rect.left) / rect.width) * 2 - 1,
+      -(((py - rect.top) / rect.height) * 2 - 1),
+    );
   const centre = panel.box.getCenter(new THREE.Vector3());
   const fwd = cam.getWorldDirection(new THREE.Vector3());
   const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(fwd, centre);
   const ray = new THREE.Raycaster();
-  const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const corners = [
+    [x0, y0],
+    [x1, y0],
+    [x1, y1],
+    [x0, y1],
+  ];
   const pts = [];
   for (const [px, py] of corners) {
     ray.setFromCamera(ndc(px, py), cam);
@@ -1134,11 +1321,13 @@ function rectToWindow(panel, x0, y0, x1, y1) {
     if (ray.ray.intersectPlane(plane, hit)) pts.push(hit);
   }
   if (pts.length < 4) return null;
-  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-  for (const p of pts) for (let a = 0; a < 3; a++) {
-    lo[a] = Math.min(lo[a], p.getComponent(a));
-    hi[a] = Math.max(hi[a], p.getComponent(a));
-  }
+  const lo = [Infinity, Infinity, Infinity],
+    hi = [-Infinity, -Infinity, -Infinity];
+  for (const p of pts)
+    for (let a = 0; a < 3; a++) {
+      lo[a] = Math.min(lo[a], p.getComponent(a));
+      hi[a] = Math.max(hi[a], p.getComponent(a));
+    }
   const fabs = [Math.abs(fwd.x), Math.abs(fwd.y), Math.abs(fwd.z)];
   const depthAxis = fabs.indexOf(Math.max(...fabs));
   const off = [panel.offset.x, panel.offset.y, panel.offset.z];
@@ -1154,40 +1343,47 @@ function rectToWindow(panel, x0, y0, x1, y1) {
 // Attach the region-drawing behaviour to a panel's canvas. Active only in pick
 // mode; on release it creates a child view of the drawn region from THIS panel.
 function attachPick(panel) {
-  panel.canvas.addEventListener("pointerdown", (e) => {
-    if (!pickMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const x0 = e.clientX, y0 = e.clientY;
-    rubber.hidden = false;
-    const draw = (x, y) => {
-      rubber.style.left = Math.min(x0, x) + "px";
-      rubber.style.top = Math.min(y0, y) + "px";
-      rubber.style.width = Math.abs(x - x0) + "px";
-      rubber.style.height = Math.abs(y - y0) + "px";
-    };
-    draw(x0, y0);
-    const move = (ev) => draw(ev.clientX, ev.clientY);
-    const up = (ev) => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      rubber.hidden = true;
-      setPickMode(false);
-      if (Math.abs(ev.clientX - x0) < 6 || Math.abs(ev.clientY - y0) < 6) return; // ignore clicks
-      const win = rectToWindow(panel, x0, y0, ev.clientX, ev.clientY);
-      if (!win) return;
-      createFloatingView({ win, source: panel });   // child view of this region
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  }, true);
+  panel.canvas.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!pickMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const x0 = e.clientX,
+        y0 = e.clientY;
+      rubber.hidden = false;
+      const draw = (x, y) => {
+        rubber.style.left = Math.min(x0, x) + "px";
+        rubber.style.top = Math.min(y0, y) + "px";
+        rubber.style.width = Math.abs(x - x0) + "px";
+        rubber.style.height = Math.abs(y - y0) + "px";
+      };
+      draw(x0, y0);
+      const move = (ev) => draw(ev.clientX, ev.clientY);
+      const up = (ev) => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        rubber.hidden = true;
+        setPickMode(false);
+        if (Math.abs(ev.clientX - x0) < 6 || Math.abs(ev.clientY - y0) < 6) return; // ignore clicks
+        const win = rectToWindow(panel, x0, y0, ev.clientX, ev.clientY);
+        if (!win) return;
+        createFloatingView({ win, source: panel }); // child view of this region
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    },
+    true,
+  );
 }
 
 // The main view is a valid pick source too.
 attachPick(main);
 // Clicking the main view (outside pick mode) deselects any view, so the sidebar
 // controls target the main view again.
-main.canvas.addEventListener("pointerdown", () => { if (!pickMode) selectView(null); });
+main.canvas.addEventListener("pointerdown", () => {
+  if (!pickMode) selectView(null);
+});
 
 // render loop
 function tick() {
@@ -1201,16 +1397,23 @@ function tick() {
   // the wordmark; silently omitted if the file is absent.
   try {
     const r = await fetch("VERSION", { cache: "no-store" });
-    if (r.ok) { const v = (await r.text()).trim(); const el = $("version"); if (el && v) el.textContent = "v" + v; }
-  } catch (_) { /* no version file */ }
+    if (r.ok) {
+      const v = (await r.text()).trim();
+      const el = $("version");
+      if (el && v) el.textContent = "v" + v;
+    }
+  } catch (_) {
+    /* no version file */
+  }
   try {
     setStatus("Loading…");
     await data.loadManifest();
     scale = 1 / data.mmPerScene;
-    if (data.ui && data.ui.font_scale) setFontScale(data.ui.font_scale);  // TOML [ui] font_scale
-    if (data.ui && data.ui.sidebar_width) document.documentElement.style.setProperty("--side-w", data.ui.sidebar_width + "px");
+    if (data.ui && data.ui.font_scale) setFontScale(data.ui.font_scale); // TOML [ui] font_scale
+    if (data.ui && data.ui.sidebar_width)
+      document.documentElement.style.setProperty("--side-w", data.ui.sidebar_width + "px");
     if (data.ui && data.ui.fonts) {
-      for (const [k, v] of Object.entries(data.ui.fonts)) setCategorySize(k, v);  // [ui.fonts]
+      for (const [k, v] of Object.entries(data.ui.fonts)) setCategorySize(k, v); // [ui.fonts]
     }
     $("evMax").textContent = String(data.nEvents - 1);
 
@@ -1242,7 +1445,7 @@ function tick() {
       // interpreted as VIEWPORT PERCENTAGES so a layout is resolution-
       // independent. Falls back to a percentage cascade when unset.
       const p = rgn.panel || {};
-      const off = 4 + (cascade++ % 6) * 3;   // % cascade
+      const off = 4 + (cascade++ % 6) * 3; // % cascade
       entry.el.style.left = (p.x != null ? p.x : off) + "%";
       entry.el.style.top = (p.y != null ? p.y : off) + "%";
       entry.el.style.width = (p.w != null ? p.w : 26) + "%";
@@ -1254,7 +1457,9 @@ function tick() {
     setStatus("");
     tick();
   } catch (e) {
-    setStatus(`No display data under <code>${data.base}</code>. Produce it, then reload.<br /><code>${e.message}</code>`);
+    setStatus(
+      `No display data under <code>${data.base}</code>. Produce it, then reload.<br /><code>${e.message}</code>`,
+    );
     tick();
   }
 })();
@@ -1263,7 +1468,8 @@ function tick() {
 (function () {
   const handle = $("sideResize");
   if (!handle) return;
-  const MIN = 0, MAX = () => window.innerWidth;  // menu can be any width
+  const MIN = 0,
+    MAX = () => window.innerWidth; // menu can be any width
   handle.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     handle.classList.add("is-dragging");

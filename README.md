@@ -23,9 +23,9 @@ There are **two viewers**, sharing one core:
   option.
 
 Following the ALICE O2 event-display design ([arXiv:2503.00088](https://arxiv.org/abs/2503.00088)),
-the C++ side is a *producer*: it loads the `.db`, reads the data model, resolves
+the C++ side is a _producer_: it loads the `.db`, reads the data model, resolves
 colours, and (for the web path) tessellates geometry into display files; the web
-frontend then just *renders* them. Nothing about the physics or geometry is
+frontend then just _renders_ them. Nothing about the physics or geometry is
 re-interpreted at view time.
 
 It consumes geometry and data the same way [aegir](https://github.com/ShipSoft/aegir)
@@ -39,7 +39,8 @@ does: it links [SHiPDataModel](https://github.com/ShipSoft/data-model), reads th
 ```
 pixi run build       # configure + build
 pixi run test        # ctest (RNTuple round-trip, DB resolution, geometry cache)
-pixi run lint        # prek: clang-format, cpplint, gersemi, cmakelint, codespell, reuse
+pixi run lint        # prek: clang-format, cpplint, gersemi, cmakelint, codespell,
+                     #       reuse, prettier, eslint, stylelint, ruff
 ```
 
 `build` depends on `configure`; `test` on `build`. SHiP-specific packages
