@@ -72,11 +72,23 @@ int main() {
             result->particles.push_back(p);
         }
         writer->Fill();
+
+        // event 2: no flat hits, but a SimResult carrying one hit. The flat
+        // field is present in the file, so it wins even though it is empty.
+        hits->clear();
+        result->hits.clear();
+        result->particles.clear();
+        {
+            SHiP::SimHit h;
+            h.detector_id = 42;
+            result->hits.push_back(h);
+        }
+        writer->Fill();
     }  // writer flushes and closes on destruction
 
     // --- read back -----------------------------------------------------------
     SHiP::display::RNTupleEventSource src(path, "events");
-    check(src.numEvents() == 2, "numEvents == 2");
+    check(src.numEvents() == 3, "numEvents == 3");
 
     check(src.loadEvent(0), "loadEvent(0)");
     check(src.hits().size() == 1, "event 0 has 1 hit");
@@ -90,7 +102,11 @@ int main() {
     // simParticles field absent -> fall back to simResult.particles
     check(src.simParticles().size() == 1, "event 1 simResult fallback: 1 particle");
 
-    check(!src.loadEvent(2), "loadEvent(2) is out of range");
+    check(src.loadEvent(2), "loadEvent(2)");
+    // sim_hits is present but empty -> no fallback to simResult.hits
+    check(src.hits().empty(), "event 2 empty flat hits are not replaced by simResult");
+
+    check(!src.loadEvent(3), "loadEvent(3) is out of range");
 
     std::remove(path.c_str());
 
