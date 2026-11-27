@@ -253,9 +253,11 @@ double zHalfExtentWorld(const GeoShape* s, const GeoTrf::Transform3D& toWorld) {
 // Forward decl for recursion.
 TGeoShape* convertShape(const GeoShape* s, TGeoHMatrix& localShift);
 
+enum class BooleanOp { kUnion, kSubtraction, kIntersection };
+
 // Build a boolean composite from two operands, honouring any shifts each
 // operand carries.  Returns nullptr if either operand failed to convert.
-TGeoShape* makeBoolean(const char* kind, const GeoShape* opA, const GeoShape* opB) {
+TGeoShape* makeBoolean(BooleanOp op, const GeoShape* opA, const GeoShape* opB) {
     TGeoHMatrix sA, sB;  // shifts folded up from each operand
     TGeoShape* a = convertShape(opA, sA);
     TGeoShape* b = convertShape(opB, sB);
@@ -272,13 +274,17 @@ TGeoShape* makeBoolean(const char* kind, const GeoShape* opA, const GeoShape* op
     mB->RegisterYourself();
 
     TGeoBoolNode* node = nullptr;
-    const std::string k = kind;
-    if (k == "union")
-        node = new TGeoUnion(a, b, mA, mB);
-    else if (k == "subtraction")
-        node = new TGeoSubtraction(a, b, mA, mB);
-    else /* intersection */
-        node = new TGeoIntersection(a, b, mA, mB);
+    switch (op) {
+        case BooleanOp::kUnion:
+            node = new TGeoUnion(a, b, mA, mB);
+            break;
+        case BooleanOp::kSubtraction:
+            node = new TGeoSubtraction(a, b, mA, mB);
+            break;
+        case BooleanOp::kIntersection:
+            node = new TGeoIntersection(a, b, mA, mB);
+            break;
+    }
 
     return new TGeoCompositeShape("", node);
 }
@@ -369,11 +375,11 @@ TGeoShape* convertShape(const GeoShape* s, TGeoHMatrix& localShift) {
         return op;
     }
     if (const auto* u = dynamic_cast<const GeoShapeUnion*>(s))
-        return makeBoolean("union", u->getOpA(), u->getOpB());
+        return makeBoolean(BooleanOp::kUnion, u->getOpA(), u->getOpB());
     if (const auto* d = dynamic_cast<const GeoShapeSubtraction*>(s))
-        return makeBoolean("subtraction", d->getOpA(), d->getOpB());
+        return makeBoolean(BooleanOp::kSubtraction, d->getOpA(), d->getOpB());
     if (const auto* i = dynamic_cast<const GeoShapeIntersection*>(s))
-        return makeBoolean("intersection", i->getOpA(), i->getOpB());
+        return makeBoolean(BooleanOp::kIntersection, i->getOpA(), i->getOpB());
 
     warnUnsupported(s);
     return nullptr;
@@ -443,6 +449,13 @@ void walk(const GeoVPhysVol* vol, const GeoTrf::Transform3D& parentToWorld, int 
                     continue;  // skip this volume AND its whole subtree
                 }
             }
+            // NOTE the deliberate asymmetry with the pruning test above:
+            // pruning uses the full extent (a volume is only skipped when it
+            // cannot overlap the window), but the EMIT decision keys on the
+            // CENTRE alone, so a volume straddling the window edge is still
+            // walked (its children may be inside) yet not drawn itself. The
+            // display layers its own, tolerance-based extent filter on top
+            // (see loadRegionGeometry in sea_cucumber.cxx).
             inZ = (zc >= st.opt.z_window_min && zc <= st.opt.z_window_max);
         }
 
