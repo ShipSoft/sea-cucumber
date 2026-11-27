@@ -11,9 +11,14 @@ SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
 SPDX-License-Identifier = "LGPL-3.0-or-later"
 
 [[annotations]]
-path = ["VERSION", "web/VERSION"]
+path = ["web/VERSION"]
 SPDX-FileCopyrightText = "CERN for the benefit of the SHiP Collaboration"
 SPDX-License-Identifier = "LGPL-3.0-or-later"
+
+[[annotations]]
+path = ["web/vendor/three/**"]
+SPDX-FileCopyrightText = "2010-2023 three.js authors"
+SPDX-License-Identifier = "MIT"
 
 [[annotations]]
 path = [".gitignore"]
