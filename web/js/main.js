@@ -10,7 +10,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { DataSource } from "./data.js";
-import { SCHEMES, DEFAULT_SCHEME } from "./schemes.js";
+import { SCHEMES, DEFAULT_SCHEME, schemeOf } from "./schemes.js";
+import { loadPrefs, patchPrefs, clearPrefs, hasPrefs } from "./prefs.js";
 
 const COL = {
   earth: 0x34240f, // panel background
@@ -397,7 +398,11 @@ function rgbaOf(hex, a) { const [r, g, b] = hexRGB(hex); return `rgba(${r},${g},
 // every panel, the hit/vertex marker colours, and the detector palette. Then
 // rebuild the geometry (recolour) and the current event (recolour markers).
 function applyScheme(name, opts = {}) {
-  const s = SCHEMES[name] || SCHEMES[DEFAULT_SCHEME];
+  // Schemes get renamed; a key out of an older config or an older browser
+  // store must not leave activeScheme and the dropdown pointing at a scheme
+  // that no longer exists, so resolve it once and use that everywhere.
+  const key = schemeOf(name) ? name : DEFAULT_SCHEME;
+  const s = schemeOf(key);
   const r = document.documentElement.style;
   r.setProperty("--earth", s.bg);
   r.setProperty("--earth-2", s.bg2 || s.bg);
@@ -413,9 +418,9 @@ function applyScheme(name, opts = {}) {
   COL.pink = hexToInt(s.hit);
   COL.pinkLt = hexToInt(s.vertex);
   schemeGeometry = s.geometry || null;
-  activeScheme = name;
+  activeScheme = key;
   const sel = $("scheme");
-  if (sel && sel.value !== name) sel.value = name;
+  if (sel && sel.value !== key) sel.value = key;
 
   // At boot (rebuild:false) the caller builds geometry right after, so we skip
   // the rebuild to avoid doing it twice.
@@ -429,6 +434,14 @@ function applyScheme(name, opts = {}) {
   if (typeof current === "number" && data.nEvents > 0) gotoEvent(current);
 }
 let activeScheme = DEFAULT_SCHEME;
+
+// What the config (manifest.json, i.e. the view TOML plus any user config)
+// asked for. Kept so "Revert" has something to go back to without a reload.
+let configUi = {};
+let configScheme = DEFAULT_SCHEME;
+// The scheme this browser starts in: the stored preference if there is one,
+// otherwise the config's.
+let defaultScheme = DEFAULT_SCHEME;
 
 
 // Global multiplier on every category (set from [ui] font_scale / +/-).
@@ -458,9 +471,32 @@ function categorySize(key) {
   const v = getComputedStyle(document.documentElement).getPropertyValue("--fs-" + key);
   return Math.round(parseFloat(v)) || 13;
 }
+// Also the min and max on the size inputs in the text dialog.
+const FS_MIN = 6, FS_MAX = 72;
 function setCategorySize(key, px) {
-  document.documentElement.style.setProperty("--fs-" + key, Math.max(6, px) + "px");
+  document.documentElement.style.setProperty(
+    "--fs-" + key, Math.min(FS_MAX, Math.max(FS_MIN, px)) + "px");
   fitPanels();
+}
+// Back to the value in app.css. setCategorySize can only set, and Revert has to
+// undo categories the config never mentioned.
+function resetCategorySize(key) {
+  document.documentElement.style.removeProperty("--fs-" + key);
+  fitPanels();
+}
+function sidebarWidth() {
+  const w = Math.round(parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue("--side-w")));
+  return Number.isFinite(w) ? w : 232;   // 0 is a width: the menu collapsed
+}
+// The menu may be anything from collapsed to the full window width. Every route
+// in -- the drag handle, the config, this browser's stored width -- is held to
+// that range here, so a stored value from another screen (or a hand-edited one)
+// cannot push the sidebar, and the buttons that would undo it, off-screen.
+const SIDE_MIN = 0, sideMax = () => window.innerWidth;
+function setSidebarWidth(px) {
+  const w = Math.min(sideMax(), Math.max(SIDE_MIN, px));
+  document.documentElement.style.setProperty("--side-w", w + "px");
 }
 
 // A numeric font-size dialog: set just this element, or all of its category.
@@ -485,7 +521,7 @@ function showTextDialog(el) {
   const curHex = rgbToHex(getComputedStyle(el).color);
   showPopout("Text style", (body, close) => {
     const catSizeRow = cat
-      ? `<label class="field">all ${cat.label} <input id="tdCatSize" type="number" min="6" max="72" value="${categorySize(cat.key)}"></label>` +
+      ? `<label class="field">all ${cat.label} <input id="tdCatSize" type="number" min="${FS_MIN}" max="${FS_MAX}" value="${categorySize(cat.key)}"></label>` +
         `<div class="popout__actions"><button id="tdCatSizeSet" class="btn">Set all ${cat.label}</button></div>`
       : "";
     const catColRow = cat
@@ -494,7 +530,7 @@ function showTextDialog(el) {
       : "";
     body.innerHTML =
       `<h4 class="popout__sub">Size (px)</h4>` +
-      `<label class="field">this element <input id="tdSize" type="number" min="6" max="72" value="${curSize}"></label>` +
+      `<label class="field">this element <input id="tdSize" type="number" min="${FS_MIN}" max="${FS_MAX}" value="${curSize}"></label>` +
       `<div class="popout__actions"><button id="tdSizeSet" class="btn">Set element</button></div>` +
       catSizeRow +
       `<h4 class="popout__sub">Colour</h4>` +
@@ -506,11 +542,14 @@ function showTextDialog(el) {
 
     // size
     body.querySelector("#tdSizeSet").addEventListener("click", () => {
-      el.style.fontSize = Math.max(6, Number(body.querySelector("#tdSize").value) || curSize) + "px";
+      // This one element only, so it does not go through setCategorySize and
+      // needs the same bounds applied here.
+      const px = Number(body.querySelector("#tdSize").value) || curSize;
+      el.style.fontSize = Math.min(FS_MAX, Math.max(FS_MIN, px)) + "px";
       fitPanels();
     });
     if (cat) body.querySelector("#tdCatSizeSet").addEventListener("click", () => {
-      setCategorySize(cat.key, Math.max(6, Number(body.querySelector("#tdCatSize").value) || categorySize(cat.key)));
+      setCategorySize(cat.key, Number(body.querySelector("#tdCatSize").value) || categorySize(cat.key));
     });
     // colour: keep the picker and the hex field in sync
     const pick = body.querySelector("#tdPick");
@@ -596,7 +635,9 @@ function toggleHelp() {
     "<tr><td>+ / -</td><td>all text larger / smaller</td></tr>" +
     "<tr><td>Ctrl +/-</td><td>browser zoom (native)</td></tr>" +
     "<tr><td>?</td><td>this help</td></tr></table>" +
-    "<p>Right-click a label to set its font size (or its whole category).</p>";
+    "<p>Right-click a label to set its font size (or its whole category). " +
+    "\u201cSet as default\u201d under Colour scheme keeps the scheme and the text " +
+    "sizes in this browser; \u201cRevert\u201d goes back to the config file.</p>";
   box.addEventListener("click", () => box.remove());
   document.body.appendChild(box);
 }
@@ -941,7 +982,8 @@ function toHex6(v) {
   return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#e3a93c";
 }
 
-// Colour-scheme selector (populated from SCHEMES).
+// Colour-scheme selector (populated from SCHEMES). Picking one is a live
+// preview and is deliberately not remembered; "Set as default" is.
 const schemeSel = $("scheme");
 if (schemeSel) {
   for (const [key, sc] of Object.entries(SCHEMES)) {
@@ -951,6 +993,78 @@ if (schemeSel) {
     schemeSel.appendChild(o);
   }
   schemeSel.addEventListener("change", (e) => applyScheme(e.target.value));
+}
+
+function schemeLabel(key) {
+  const sc = schemeOf(key);
+  return (sc && sc.label) || key;
+}
+// Star the scheme the page will open in, and say where that came from.
+function refreshSchemeUI() {
+  if (schemeSel) {
+    for (const o of schemeSel.options) {
+      o.textContent = schemeLabel(o.value) + (o.value === defaultScheme ? "  \u2605" : "");
+    }
+    if (activeScheme && schemeSel.value !== activeScheme) schemeSel.value = activeScheme;
+  }
+  const stored = hasPrefs();
+  const note = $("schemeNote");
+  if (note) {
+    note.textContent = `\u2605 default: ${schemeLabel(defaultScheme)} — ` +
+      (stored ? "this browser" : "from the config");
+  }
+  const revert = $("schemeRevert");
+  if (revert) revert.disabled = !stored;
+}
+
+// "Set as default" covers the whole appearance block, not the scheme alone --
+// the text sizes and menu width have no other affordance to save them, and the
+// buttons' titles say as much.
+const schemeDefaultBtn = $("schemeDefault");
+if (schemeDefaultBtn) schemeDefaultBtn.addEventListener("click", () => {
+  const fonts = {};
+  for (const c of FONT_CATEGORIES) fonts[c.key] = categorySize(c.key);
+  const ok = patchPrefs({
+    scheme: activeScheme,
+    font_scale: fontScale,
+    fonts,
+    sidebar_width: sidebarWidth(),
+  });
+  if (!ok) { setStatus("This browser won't let the page store settings."); return; }
+  defaultScheme = activeScheme;
+  refreshSchemeUI();
+  setStatus("Appearance saved in this browser.");
+  setTimeout(() => setStatus(""), 2500);
+});
+
+// Revert: drop what this browser remembers and put the config's appearance
+// back, live -- no reload needed.
+const schemeRevertBtn = $("schemeRevert");
+if (schemeRevertBtn) schemeRevertBtn.addEventListener("click", () => {
+  // Nothing changes unless the browser actually forgot: reverting the live
+  // appearance while the stored one survives would come back on the next reload.
+  if (!clearPrefs()) {
+    setStatus("This browser won't let the page forget its settings.");
+    return;
+  }
+  document.documentElement.style.removeProperty("--font-scale");
+  document.documentElement.style.removeProperty("--side-w");
+  for (const c of FONT_CATEGORIES) resetCategorySize(c.key);
+  applyConfigUi();
+  defaultScheme = configScheme;
+  applyScheme(configScheme);                   // rebuilds, so the 3D recolours
+  refreshSchemeUI();
+  setStatus("Back to the config's appearance.");
+  setTimeout(() => setStatus(""), 2500);
+});
+
+// The [ui] block the producer baked into manifest.json.
+function applyConfigUi() {
+  setFontScale(Number.isFinite(configUi.font_scale) ? configUi.font_scale : 1);
+  if (Number.isFinite(configUi.sidebar_width)) setSidebarWidth(configUi.sidebar_width);
+  if (configUi.fonts) {
+    for (const [k, v] of Object.entries(configUi.fonts)) setCategorySize(k, v);
+  }
 }
 
 const newViewBtn = $("newView");
@@ -1207,16 +1321,26 @@ function tick() {
     setStatus("Loading…");
     await data.loadManifest();
     scale = 1 / data.mmPerScene;
-    if (data.ui && data.ui.font_scale) setFontScale(data.ui.font_scale);  // TOML [ui] font_scale
-    if (data.ui && data.ui.sidebar_width) document.documentElement.style.setProperty("--side-w", data.ui.sidebar_width + "px");
-    if (data.ui && data.ui.fonts) {
-      for (const [k, v] of Object.entries(data.ui.fonts)) setCategorySize(k, v);  // [ui.fonts]
+    // Appearance comes in two layers: the config the producer baked into the
+    // manifest, then whatever this browser remembers on top (prefs.js).
+    configUi = data.ui || {};
+    configScheme = schemeOf(configUi.color_scheme) ? configUi.color_scheme : DEFAULT_SCHEME;
+    applyConfigUi();
+
+    const prefs = loadPrefs();
+    if (prefs.font_scale) setFontScale(prefs.font_scale);
+    if (Number.isFinite(prefs.sidebar_width)) setSidebarWidth(prefs.sidebar_width);
+    if (prefs.fonts) {
+      for (const [k, v] of Object.entries(prefs.fonts)) setCategorySize(k, v);
     }
+    defaultScheme = schemeOf(prefs.scheme) ? prefs.scheme : configScheme;
+
     $("evMax").textContent = String(data.nEvents - 1);
 
-    // Colour scheme: from [ui] color_scheme (manifest) or the default. Applied
-    // before the first geometry build so it is coloured correctly from the off.
-    applyScheme((data.ui && data.ui.color_scheme) || DEFAULT_SCHEME, { rebuild: false });
+    // Applied before the first geometry build so it is coloured correctly from
+    // the off -- hence rebuild:false, `meshes` is still undefined here.
+    applyScheme(defaultScheme, { rebuild: false });
+    refreshSchemeUI();
     meshes = await data.loadGeometry();
     main.setGeometry(computeGeometry(meshes, scale, null));
     main.frame("3d");
@@ -1226,9 +1350,10 @@ function tick() {
 
     // Build the region views from the manifest, which the producer fills from
     // views/default.toml (model A: the TOML is the single source of the web
-    // layout -- windows, cameras, and panel position/size). No JSON setup, no
-    // localStorage. Edit the [[region]] blocks in views/default.toml to change
-    // the default arrangement.
+    // layout -- windows, cameras, and panel position/size). No JSON setup and
+    // no saved layout; the only thing this browser remembers is appearance
+    // (see prefs.js). Edit the [[region]] blocks in views/default.toml to
+    // change the default arrangement.
     let cascade = 0;
     for (const rgn of data.regions) {
       const win = winFromRegion(rgn);
@@ -1255,6 +1380,7 @@ function tick() {
     tick();
   } catch (e) {
     setStatus(`No display data under <code>${data.base}</code>. Produce it, then reload.<br /><code>${e.message}</code>`);
+    refreshSchemeUI();
     tick();
   }
 })();
@@ -1263,13 +1389,11 @@ function tick() {
 (function () {
   const handle = $("sideResize");
   if (!handle) return;
-  const MIN = 0, MAX = () => window.innerWidth;  // menu can be any width
   handle.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     handle.classList.add("is-dragging");
     const move = (ev) => {
-      const w = Math.min(MAX(), Math.max(MIN, ev.clientX));
-      document.documentElement.style.setProperty("--side-w", w + "px");
+      setSidebarWidth(ev.clientX);   // bounds live in the setter
     };
     const up = () => {
       handle.classList.remove("is-dragging");

@@ -64,9 +64,20 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 # ---------------------------------------------------------------------------
 # --- web UI -----------------------------------------------------------------
 [ui]
+# Appearance defaults for the web interface. A view file is shared, so these are
+# only a baseline: your own config (see configs/sea_cucumber.example.toml) wins
+# over them, and "Set as default" in the browser wins over that.
+
 # Global text scale for the web interface. Also adjustable live with +/- or by
 # right-clicking a label. 1.0 = default.
 font_scale = 1.0
+
+# Which colour scheme the page opens in -- any key of SCHEMES in
+# web/js/schemes.js. Unset means ship_original.
+# color_scheme = "ship_original"
+
+# Menu width in px; also draggable in the browser. Unset means 232.
+# sidebar_width = 232
 
 # Per-category base text sizes (px) for the web UI. Right-click any label in the
 # client to change one element or a whole category; set the persistent defaults

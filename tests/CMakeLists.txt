@@ -16,3 +16,7 @@ add_test(NAME geometry_cache COMMAND test_geometry_cache)
 add_executable(test_unknown_fields test_unknown_fields.cpp)
 target_link_libraries(test_unknown_fields PRIVATE sea_cucumber_core)
 add_test(NAME unknown_fields COMMAND test_unknown_fields)
+
+add_executable(test_user_config test_user_config.cpp)
+target_link_libraries(test_user_config PRIVATE sea_cucumber_core)
+add_test(NAME user_config COMMAND test_user_config)

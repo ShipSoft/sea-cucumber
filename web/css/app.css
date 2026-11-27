@@ -154,6 +154,7 @@ html, body { margin: 0; height: 100%; background: var(--earth-2); color: var(--c
 
 /* ---- selected view + section hint --------------------------------------- */
 .hint { font-weight: 400; color: var(--ink-dim); font-size: calc(11px * var(--font-scale)); }
+p.hint { margin: 6px 0 0; }   /* the scheme-default caption; <p> default margin is too much */
 .fpanel.is-selected { border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow),
   0 8px 28px rgba(0, 0, 0, 0.45); }
 
