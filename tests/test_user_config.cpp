@@ -15,9 +15,13 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <random>
+#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <vector>
+
+#include <unistd.h>
 
 #include "UserConfig.h"
 #include "ViewConfig.h"
@@ -49,6 +53,33 @@ struct CwdGuard {
     }
 };
 
+/// A scratch directory of our own, removed again however we leave main().
+/// The name carries the pid and a random suffix, and create_directory() only
+/// succeeds for the caller that made it, so two runs on one host never share
+/// (or delete) each other's fixtures.
+struct ScratchDir {
+    fs::path path;
+    ScratchDir() {
+        std::random_device rd;
+        const fs::path base = fs::temp_directory_path();
+        for (int attempt = 0; attempt < 100; ++attempt) {
+            const fs::path candidate =
+                base / ("sc_user_config-" + std::to_string(getpid()) + "-" + std::to_string(rd()));
+            if (fs::create_directory(candidate)) {
+                path = candidate;
+                return;
+            }
+        }
+        throw std::runtime_error("could not create a scratch directory in " + base.string());
+    }
+    ~ScratchDir() {
+        std::error_code ec;
+        fs::remove_all(path, ec);
+    }
+    ScratchDir(const ScratchDir&) = delete;
+    ScratchDir& operator=(const ScratchDir&) = delete;
+};
+
 /// Index of `needle` in `hay`, or -1. Used to assert relative precedence
 /// without hard-coding the full candidate list.
 int indexOf(const std::vector<std::string>& hay, const std::string& needle) {
@@ -64,8 +95,10 @@ int main() {
     using SHiP::display::ResolveUserConfigFiles;
     using SHiP::display::UserConfigCandidates;
 
-    const fs::path root = fs::temp_directory_path() / "sc_user_config";
-    fs::remove_all(root);
+    // Declared before the CwdGuard so the guard leaves the directory before
+    // the scratch tree is removed.
+    const ScratchDir scratch;
+    const fs::path& root = scratch.path;
     const CwdGuard cwd;
     fs::create_directories(root / "cwd");
     fs::current_path(root / "cwd");
@@ -200,7 +233,6 @@ int main() {
     }
 
     fs::current_path(cwd.saved);
-    fs::remove_all(root);
 
     if (failures == 0) std::cout << "test_user_config: OK\n";
     return failures == 0 ? 0 : 1;
