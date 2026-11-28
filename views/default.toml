@@ -37,13 +37,14 @@ region_exclude = ['.*straw.*', '.*Fibre.*', '.*tile.*', '.*sensors_.*']
 # Alternatively `match` derives a z window from the geometry by volume name
 # (regex or glob, case-insensitive), for detectors you'd rather not hardcode.
 #   ZOOM & FRAMING: each region is centred on its window MIDPOINT, so the window
-#   panel_x / panel_y / panel_w / panel_h: web panel placement in CSS pixels.
-#     This is the single source of the web layout -- edit these to arrange the
-#     zoom panels. Omit to let the client cascade them automatically.
 #     controls both -- narrow zmin/zmax (or add an x/y window) to zoom IN, widen
 #     to zoom out, shift the window to pan. The whole window is framed, so hits
 #     extending past the drawn geometry are no longer chopped. offset_x/y/z
 #     nudge the framing by hand (mm); recenter=false keeps global coordinates.
+#   panel_x / panel_y / panel_w / panel_h: web panel placement as percentages
+#     of the browser viewport (0-100), so the layout scales with the window.
+#     This is the single source of the web layout -- edit these to arrange the
+#     zoom panels. Omit to let the client cascade them automatically.
 #   camera: "side"/"zy" (looking along x) | "top"/"xz" (looking along y) |
 #     "front"/"xy" transverse, beam's-eye (looking along z) | "3d"
 #   hit_marker_size: marker size for hits in THIS view (omit to use [hits]).
@@ -100,10 +101,10 @@ max_transparency = 30
 #   xmax = 2000.0
 #   zmin = 96000.0         # optional: also pick the calorimeter along the beam
 #   zmax = 98000.0
-panel_x = 1225
-panel_y = 4
-panel_w = 360
-panel_h = 260
+panel_x = 76
+panel_y = 1
+panel_w = 23
+panel_h = 32
 
 [[region]]
 name = "Calorimeter"
@@ -115,10 +116,10 @@ zmax = 100000.0
 camera = "side"
 max_shapes = 6000
 max_transparency = 30
-panel_x = 1228
-panel_y = 268
-panel_w = 360
-panel_h = 260
+panel_x = 76
+panel_y = 34
+panel_w = 23
+panel_h = 32
 
 [[region]]
 name = "SND"
@@ -136,10 +137,10 @@ zmax = 31500.0
 camera = "side"
 max_shapes = 6000
 max_transparency = 30
-panel_x = 1228
-panel_y = 532
-panel_w = 370
-panel_h = 291
+panel_x = 76
+panel_y = 67
+panel_w = 23
+panel_h = 32
 
 
 [geometry]

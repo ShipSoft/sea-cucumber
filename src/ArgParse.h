@@ -1,0 +1,72 @@
+// SPDX-FileCopyrightText: CERN for the benefit of the SHiP Collaboration
+// SPDX-License-Identifier: LGPL-3.0-or-later
+#ifndef SHIPDISP_ARGPARSE_H
+#define SHIPDISP_ARGPARSE_H
+
+// =============================================================================
+//  ArgParse.h -- minimal shared command-line helpers for the sea_cucumber
+//  display and tools: a required-value accessor and checked numeric parsing.
+//  Both print an error and exit(2) (the tools' usage-error convention), so a
+//  typo can never silently become 0 or an uncaught std::stoll exception.
+// =============================================================================
+
+#include <charconv>
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include <string>
+#include <string_view>
+#include <system_error>
+
+namespace SHiP::display::args {
+
+/// The value following flag argv[i]; advances i. Exits when the value is
+/// missing, including when the next token is another option: no flag takes a
+/// value starting with "--", so `--output --events` is a typo worth stopping
+/// for rather than a file called "--events".
+inline std::string NextValue(int argc, char* argv[], int& i, const char* flag) {
+    if (i + 1 >= argc || std::string_view(argv[i + 1]).starts_with("--")) {
+        std::cerr << "error: " << flag << " needs a value\n";
+        std::exit(2);
+    }
+    return argv[++i];
+}
+
+/// Whole-string numeric parse of a flag's value. Exits on anything that is
+/// not entirely a number of type T.
+template <typename T>
+T ParseNumber(const std::string& v, const char* flag) {
+    T out{};
+    const char* begin = v.data();
+    const char* end = v.data() + v.size();
+    // from_chars rejects a leading '+', which stoi and friends accepted; allow
+    // one, but not a second sign after it
+    if (begin != end && *begin == '+' &&
+        (begin + 1 == end || (begin[1] != '+' && begin[1] != '-'))) {
+        ++begin;
+    }
+    auto [p, ec] = std::from_chars(begin, end, out);
+    if (ec != std::errc{} || p != end) {
+        std::cerr << "error: " << flag << " needs a numeric value (got '" << v << "')\n";
+        std::exit(2);
+    }
+    return out;
+}
+
+/// ParseNumber for quantities that only make sense as a finite, positive
+/// value (a scale, a length). from_chars accepts "nan" and "inf" for floating
+/// types, and the callers treat <= 0 as "not set", so without this check a
+/// typo would silently fall back or break the display.
+template <typename T>
+T ParsePositive(const std::string& v, const char* flag) {
+    const T out = ParseNumber<T>(v, flag);
+    if (!std::isfinite(static_cast<double>(out)) || !(out > T{0})) {
+        std::cerr << "error: " << flag << " needs a finite, positive value (got '" << v << "')\n";
+        std::exit(2);
+    }
+    return out;
+}
+
+}  // namespace SHiP::display::args
+
+#endif  // SHIPDISP_ARGPARSE_H
