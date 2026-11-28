@@ -413,7 +413,7 @@ int main(int argc, char* argv[]) {
             mj << "\"" << kAx[ax] << "\":[" << r.wmin[ax] << "," << r.wmax[ax] << "]";
         }
         mj << "}";  // close window
-        // Optional panel layout (CSS px). Emitted only when set, so the client
+        // Optional panel layout (% of the viewport). Emitted only when set, so the client
         // can fall back to a default cascade otherwise.
         if (r.panel_x >= 0 || r.panel_y >= 0 || r.panel_w >= 0 || r.panel_h >= 0) {
             mj << ",\"panel\":{";
