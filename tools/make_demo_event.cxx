@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
         else if (a == "--seed")
             seed = SHiP::display::args::ParseNumber<unsigned>(nxt(), "--seed");
         else if (a == "--down-min")
-            downMinArg = SHiP::display::args::ParseNumber<double>(nxt(), "--down-min");
+            downMinArg = SHiP::display::args::ParsePositive<double>(nxt(), "--down-min");
         else if (a == "-h" || a == "--help") {
             std::cout << "Usage: make_demo_event [--geometry ship.db] [--output f.root] "
                          "[--events N] [--seed S] [--down-min mm]\n";

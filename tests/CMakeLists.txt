@@ -24,3 +24,18 @@ add_test(NAME name_pattern COMMAND test_name_pattern)
 add_executable(test_view_config test_view_config.cpp)
 target_link_libraries(test_view_config PRIVATE sea_cucumber_core)
 add_test(NAME view_config COMMAND test_view_config)
+
+# Numeric flags that must be finite and positive are rejected at parse time,
+# before any ROOT or geometry work, so these need no input files.
+foreach(val nan inf 0 -1)
+    add_test(NAME args_scale_rejects_${val} COMMAND sea_cucumber --scale ${val})
+    add_test(
+        NAME args_down_min_rejects_${val}
+        COMMAND make_demo_event --down-min ${val}
+    )
+    set_tests_properties(
+        args_scale_rejects_${val}
+        args_down_min_rejects_${val}
+        PROPERTIES PASS_REGULAR_EXPRESSION "needs a finite, positive value"
+    )
+endforeach()

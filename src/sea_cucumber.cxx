@@ -799,7 +799,7 @@ int main(int argc, char* argv[]) {
         } else if (a == "--event") {
             event = SHiP::display::args::ParseNumber<std::int64_t>(next("--event"), "--event");
         } else if (a == "--scale") {
-            scaleOverride = SHiP::display::args::ParseNumber<double>(next("--scale"), "--scale");
+            scaleOverride = SHiP::display::args::ParsePositive<double>(next("--scale"), "--scale");
         } else if (a == "--logo") {
             logoDir = next("--logo");
         } else if (a == "--inspect-match") {

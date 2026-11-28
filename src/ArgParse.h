@@ -11,6 +11,7 @@
 // =============================================================================
 
 #include <charconv>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -47,6 +48,20 @@ T ParseNumber(const std::string& v, const char* flag) {
     auto [p, ec] = std::from_chars(begin, end, out);
     if (ec != std::errc{} || p != end) {
         std::cerr << "error: " << flag << " needs a numeric value (got '" << v << "')\n";
+        std::exit(2);
+    }
+    return out;
+}
+
+/// ParseNumber for quantities that only make sense as a finite, positive
+/// value (a scale, a length). from_chars accepts "nan" and "inf" for floating
+/// types, and the callers treat <= 0 as "not set", so without this check a
+/// typo would silently fall back or break the display.
+template <typename T>
+T ParsePositive(const std::string& v, const char* flag) {
+    const T out = ParseNumber<T>(v, flag);
+    if (!std::isfinite(static_cast<double>(out)) || !(out > T{0})) {
+        std::cerr << "error: " << flag << " needs a finite, positive value (got '" << v << "')\n";
         std::exit(2);
     }
     return out;
